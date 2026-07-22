@@ -13,21 +13,23 @@
 <!-- NAV -->
 <nav id="navbar">
   <div class="nav-inner">
-    <div class="nav-logo">
+    <a href="#" class="nav-logo" onclick="goHome(); return false;">
       <span class="logo-icon">✦</span>
       <span class="logo-text">Path<span class="accent">spire</span></span>
-    </div>
+    </a>
     <div class="nav-links" id="navLinks">
       <a href="#" onclick="showSection('dashboard')" class="nav-link" data-en="Dashboard" data-zh="儀表板">Dashboard</a>
       <a href="#" onclick="showSection('grades')" class="nav-link" data-en="Grades" data-zh="成績">Grades</a>
       <a href="#" onclick="showSection('activities')" class="nav-link" data-en="Activities" data-zh="活動">Activities</a>
       <a href="#" onclick="showSection('ps')" class="nav-link" data-en="Personal Statement" data-zh="個人陳述">Personal Statement</a>
       <a href="#" onclick="showSection('interview')" class="nav-link" data-en="Interview" data-zh="面試訓練">Interview</a>
+      <a href="#" onclick="showSection('career')" class="nav-link" data-en="College Planning" data-zh="升學規劃">College Planning</a>
       <a href="#" onclick="showSection('schools')" class="nav-link" data-en="Schools" data-zh="選校">Schools</a>
+      <a href="#" onclick="showSection('plans')" class="nav-link" data-en="Plans" data-zh="方案">Plans</a>
     </div>
     <div class="nav-actions">
       <button class="lang-toggle" onclick="toggleLang()" id="langBtn">繁中</button>
-      <button class="btn-primary" onclick="showSection('dashboard')" data-en="Get Started" data-zh="立即開始">Get Started</button>
+      <button class="btn-primary" onclick="openProfileEditor()" id="mainActionBtn" data-en="Create Profile" data-zh="建立檔案">Create Profile</button>
     </div>
     <button class="hamburger" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
   </div>
@@ -80,6 +82,16 @@
       <h3 data-en="School Matching" data-zh="選校配對">School Matching</h3>
       <p data-en="AI recommends universities based on your full profile and goals." data-zh="AI 根據你的完整檔案推薦最合適的大學。">AI recommends universities based on your full profile and goals.</p>
     </div>
+    <div class="feat-card" onclick="showSection('career')">
+      <div class="feat-icon"><i class="fas fa-route"></i></div>
+      <h3 data-en="College Timeline" data-zh="升學時間線">College Timeline</h3>
+      <p data-en="Visualize your application roadmap from prep to offer day and beyond." data-zh="把申請路線圖從準備至錄取日及以後一併規劃清楚。">Visualize your application roadmap from prep to offer day and beyond.</p>
+    </div>
+    <div class="feat-card" onclick="showSection('plans')">
+      <div class="feat-icon"><i class="fas fa-coins"></i></div>
+      <h3 data-en="Flexible Plans" data-zh="靈活方案">Flexible Plans</h3>
+      <p data-en="Choose monthly or annual access to AI interview coaching, editing and university support." data-zh="選擇月費或年費，解鎖 AI 面試、申請評估與選校支援。">Choose monthly or annual access to AI interview coaching, editing and university support.</p>
+    </div>
     <div class="feat-card highlight-card">
       <div class="feat-icon"><i class="fas fa-globe"></i></div>
       <h3 data-en="HK & Global" data-zh="香港 & 海外">HK & Global</h3>
@@ -129,6 +141,10 @@
           <label data-en="Target Major" data-zh="目標主修">Target Major</label>
           <input type="text" id="targetMajor" placeholder="e.g. Computer Science" />
         </div>
+        <div class="form-group">
+          <label data-en="Target Program" data-zh="目標課程">Target Program</label>
+          <input type="text" id="targetProgram" placeholder="e.g. BSc Computer Science" />
+        </div>
       </div>
       <button class="btn-primary" onclick="saveProfile()" data-en="Save Profile" data-zh="儲存檔案">Save Profile</button>
     </div>
@@ -164,11 +180,19 @@
     <h2 data-en="Grade Tracker" data-zh="成績追蹤">Grade Tracker</h2>
     <p data-en="Enter your subject scores to analyze your university competitiveness" data-zh="輸入科目成績，分析你的大學競爭力">Enter your subject scores to analyze your university competitiveness</p>
   </div>
+  <div class="gpa-card">
+    <div class="form-row">
+      <div class="form-group">
+        <label data-en="Estimated GPA" data-zh="預估 GPA">Estimated GPA</label>
+        <input type="number" id="estimatedGpa" min="0" max="5" step="0.1" placeholder="N/A or 0.0–5.0" onchange="saveEstimatedGpa()" />
+      </div>
+    </div>
+  </div>
   <div class="curriculum-tabs">
-    <button class="curr-tab active" onclick="switchCurriculum('DSE',this)">HKDSE</button>
-    <button class="curr-tab" onclick="switchCurriculum('AP',this)">AP</button>
-    <button class="curr-tab" onclick="switchCurriculum('ALEVEL',this)">A-Level</button>
-    <button class="curr-tab" onclick="switchCurriculum('IB',this)">IB</button>
+    <button class="curr-tab" data-curr="DSE" onclick="switchCurriculum('DSE',this)">HKDSE</button>
+    <button class="curr-tab" data-curr="AP" onclick="switchCurriculum('AP',this)">AP</button>
+    <button class="curr-tab" data-curr="ALEVEL" onclick="switchCurriculum('ALEVEL',this)">A-Level</button>
+    <button class="curr-tab" data-curr="IB" onclick="switchCurriculum('IB',this)">IB</button>
   </div>
 
   <!-- DSE -->
@@ -182,9 +206,13 @@
   <!-- AP -->
   <div id="grade-AP" class="grade-form" style="display:none">
     <h3>AP Subjects</h3>
-    <div class="grade-note" data-en="AP scores are 1–5. Add as many as you've taken." data-zh="AP 分數為 1–5，請添加所有已修科目。">AP scores are 1–5. Add as many as you've taken.</div>
-    <div class="subjects-grid" id="apSubjects"></div>
+    <div class="grade-note" data-en="Search official AP subjects and add your scores. Strong applicants usually take 5–8 APs with mostly 4s and 5s." data-zh="搜尋官方 AP 科目並輸入分數。強勢申請者通常修讀 5–8 科 AP，且多數為 4 或 5。">Search official AP subjects and add your scores. Strong applicants usually take 5–8 APs with mostly 4s and 5s.</div>
+    <div class="ap-search-box">
+      <input type="text" id="apSearchInput" placeholder="Search AP subject..." oninput="filterAPSubjects()" />
+      <div class="ap-search-results" id="apSearchResults"></div>
+    </div>
     <button class="btn-secondary" onclick="addCustomSubject('AP')" data-en="+ Add AP Subject" data-zh="+ 添加 AP 科目">+ Add AP Subject</button>
+    <div class="subjects-grid" id="apSubjects"></div>
   </div>
 
   <!-- A-LEVEL -->
@@ -221,40 +249,39 @@
   </div>
   <div class="activity-categories">
     <div class="act-cat-btn active" onclick="filterActivities('all',this)" data-en="All" data-zh="全部">All</div>
-    <div class="act-cat-btn" onclick="filterActivities('leadership',this)" data-en="Leadership" data-zh="領導">Leadership</div>
-    <div class="act-cat-btn" onclick="filterActivities('sports',this)" data-en="Sports" data-zh="體育">Sports</div>
-    <div class="act-cat-btn" onclick="filterActivities('arts',this)" data-en="Arts" data-zh="藝術">Arts</div>
-    <div class="act-cat-btn" onclick="filterActivities('volunteer',this)" data-en="Volunteer" data-zh="義工">Volunteer</div>
-    <div class="act-cat-btn" onclick="filterActivities('academic',this)" data-en="Academic" data-zh="學術">Academic</div>
-    <div class="act-cat-btn" onclick="filterActivities('work',this)" data-en="Work/Internship" data-zh="工作/實習">Work/Internship</div>
+    <div class="act-cat-btn" onclick="filterActivities('award',this)" data-en="Award" data-zh="獎項">Award</div>
+    <div class="act-cat-btn" onclick="filterActivities('position',this)" data-en="Position" data-zh="職位">Position</div>
+    <div class="act-cat-btn" onclick="filterActivities('other',this)" data-en="Other" data-zh="其他">Other</div>
   </div>
   <div class="activity-list" id="activityList"></div>
   <button class="btn-primary add-activity-btn" onclick="openActivityModal()" data-en="+ Add Activity" data-zh="+ 添加活動">+ Add Activity</button>
   <div id="activityModal" class="modal" style="display:none">
     <div class="modal-box">
-      <h3 data-en="Add Activity" data-zh="添加活動">Add Activity</h3>
+      <h3 id="activityModalTitle" data-en="Add Activity" data-zh="添加活動">Add Activity</h3>
       <div class="form-group"><label data-en="Activity Name" data-zh="活動名稱">Activity Name</label><input type="text" id="actName" /></div>
-      <div class="form-row">
-        <div class="form-group">
-          <label data-en="Category" data-zh="類別">Category</label>
-          <select id="actCategory">
-            <option value="leadership">Leadership</option>
-            <option value="sports">Sports</option>
-            <option value="arts">Arts</option>
-            <option value="volunteer">Volunteer</option>
-            <option value="academic">Academic</option>
-            <option value="work">Work/Internship</option>
-          </select>
+      <div class="form-group"><label data-en="Type" data-zh="類型">Type</label><input type="text" id="actType" placeholder="e.g. Academic Competition, Club, Internship" /></div>
+      <div class="form-group">
+        <label data-en="Entry Type" data-zh="分類">Entry Type</label>
+        <div class="entry-type-selector">
+          <button type="button" class="entry-type-btn" onclick="selectActivityEntryType('award', this)">Award</button>
+          <button type="button" class="entry-type-btn" onclick="selectActivityEntryType('position', this)">Position</button>
+          <button type="button" class="entry-type-btn active" onclick="selectActivityEntryType('other', this)">Other</button>
         </div>
+        <input type="hidden" id="actEntryType" value="other" />
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label data-en="Years Active" data-zh="參與年份">Years Active</label>
           <input type="text" id="actYears" placeholder="e.g. 2022–2024" />
         </div>
+        <div class="form-group" id="actRoleGroup">
+          <label data-en="Role / Position" data-zh="職位/角色">Role / Position</label>
+          <input type="text" id="actRole" placeholder="e.g. Vice President" />
+        </div>
       </div>
-      <div class="form-group"><label data-en="Role / Position" data-zh="職位/角色">Role / Position</label><input type="text" id="actRole" placeholder="e.g. Vice President" /></div>
       <div class="form-group"><label data-en="Description (impact, achievements)" data-zh="描述（影響力、成就）">Description</label><textarea id="actDesc" rows="3"></textarea></div>
-      <div class="form-group">
-        <label data-en="Awards / Honours" data-zh="獎項/榮譽">Awards / Honours</label>
+      <div class="form-group" id="actAwardGroup">
+        <label data-en="Award / Honor" data-zh="獎項/榮譽">Award / Honor</label>
         <input type="text" id="actAwards" placeholder="e.g. 1st Prize, Regional Competition" />
       </div>
       <div class="modal-btns">
@@ -356,63 +383,256 @@
 <section id="interview" class="section">
   <div class="page-header">
     <h2 data-en="AI Interview Coach" data-zh="AI 面試教練">AI Interview Coach</h2>
-    <p data-en="Real-time facial analysis to help you build confidence and communicate better" data-zh="即時面部分析，助你建立自信、更好地表達自己">Real-time facial analysis to build confidence</p>
+    <p data-en="Practice with Dr. Path, your AI interview coach, in a realistic video call setting" data-zh="與 Dr. Path 練習，在真實的視像會面場景中提升面試技巧">Practice with Dr. Path, your AI interview coach, in a realistic video call setting</p>
   </div>
-  <div class="interview-container">
-    <div class="interview-left">
-      <div class="camera-box" id="cameraBox">
-        <video id="interviewVideo" autoplay muted playsinline></video>
-        <canvas id="expressionCanvas"></canvas>
-        <div class="cam-overlay" id="camOverlay">
-          <div class="cam-placeholder">
-            <i class="fas fa-video"></i>
-            <p data-en="Camera preview will appear here" data-zh="攝像頭畫面將顯示於此">Camera preview will appear here</p>
+  
+  <!-- Setup Screen -->
+  <div id="interviewSetup" class="interview-setup">
+    <div class="setup-container">
+      <div class="setup-left">
+        <div class="setup-avatar">
+          <div class="avatar-circle">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h3>Dr. Path</h3>
+          <p class="avatar-title">PATHS Admissions</p>
+        </div>
+      </div>
+      <div class="setup-right">
+        <h2 data-en="Customize Your Interview" data-zh="自訂你的面試">Customize Your Interview</h2>
+        <p class="setup-sub" data-en="Tailor the interview to match your target university and program" data-zh="根據你的目標大學和課程調整面試內容">Tailor the interview to match your target university and program</p>
+        
+        <div class="setup-form">
+          <div class="form-group">
+            <label data-en="Interview Type" data-zh="面試類型">Interview Type</label>
+            <select id="interviewType">
+              <option value="general" data-en="General Admissions" data-zh="一般入學面試">General Admissions</option>
+              <option value="subject" data-en="Subject-Specific" data-zh="學科專門面試">Subject-Specific</option>
+              <option value="oxbridge" data-en="Oxford/Cambridge Style" data-zh="牛津/劍橋風格">Oxford/Cambridge Style</option>
+              <option value="medical" data-en="Medical School" data-zh="醫學院面試">Medical School</option>
+              <option value="business" data-en="Business School" data-zh="商學院面試">Business School</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label data-en="Difficulty Level" data-zh="難度等級">Difficulty Level</label>
+            <select id="interviewDifficulty">
+              <option value="easy" data-en="Easy - Getting Started" data-zh="容易 - 初階">Easy - Getting Started</option>
+              <option value="medium" selected data-en="Medium - Standard" data-zh="中等 - 標準">Medium - Standard</option>
+              <option value="hard" data-en="Hard - Challenging" data-zh="困難 - 進階">Hard - Challenging</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label data-en="Number of Questions" data-zh="問題數量">Number of Questions</label>
+            <select id="interviewQuestionCount">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="7">7</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label data-en="Focus Areas" data-zh="重點領域">Focus Areas</label>
+            <div class="checkbox-group">
+              <label><input type="checkbox" value="motivation" checked> <span data-en="Motivation" data-zh="動機">Motivation</span></label>
+              <label><input type="checkbox" value="academic" checked> <span data-en="Academic" data-zh="學術">Academic</span></label>
+              <label><input type="checkbox" value="extracurricular" checked> <span data-en="Extracurricular" data-zh="課外活動">Extracurricular</span></label>
+              <label><input type="checkbox" value="future" checked> <span data-en="Future Plans" data-zh="未來規劃">Future Plans</span></label>
+              <label><input type="checkbox" value="challenge"> <span data-en="Challenges" data-zh="挑戰">Challenges</span></label>
+            </div>
+          </div>
+          
+          <button class="btn-primary large" onclick="startInterviewSession()" style="width:100%;margin-top:8px">
+            <i class="fas fa-video"></i> <span data-en="Start Interview" data-zh="開始面試">Start Interview</span>
+          </button>
+        </div>
+        
+        <div class="setup-tips">
+          <div class="tip-item">
+            <i class="fas fa-microphone"></i>
+            <span data-en="Ensure your microphone and camera are ready" data-zh="請確保你的麥克風和攝像頭已準備好">Ensure your microphone and camera are ready</span>
+          </div>
+          <div class="tip-item">
+            <i class="fas fa-clock"></i>
+            <span data-en="Interview lasts approximately 10-15 minutes" data-zh="面試約需 10-15 分鐘">Interview lasts approximately 10-15 minutes</span>
           </div>
         </div>
-        <div class="expression-badges" id="expressionBadges" style="display:none">
-          <div class="badge" id="badgeAnxiety"><i class="fas fa-face-grimace"></i> <span id="anxietyLabel">Anxiety</span>: <strong id="anxietyVal">—</strong></div>
-          <div class="badge" id="badgeConfidence"><i class="fas fa-face-smile"></i> <span id="confLabel">Confidence</span>: <strong id="confVal">—</strong></div>
-          <div class="badge" id="badgePace"><i class="fas fa-microphone"></i> <span id="paceLabel">Pace</span>: <strong id="paceVal">—</strong></div>
-        </div>
-      </div>
-      <div class="cam-controls">
-        <button class="btn-primary" onclick="startInterview()" id="startCamBtn" data-en="Start Session" data-zh="開始練習">Start Session</button>
-        <button class="btn-outline" onclick="stopInterview()" id="stopCamBtn" style="display:none" data-en="Stop" data-zh="停止">Stop</button>
-        <button class="btn-outline" onclick="toggleMic()" id="micBtn" style="display:none"><i class="fas fa-microphone"></i></button>
-      </div>
-      <div class="realtime-tips" id="realtimeTips" style="display:none">
-        <div class="tip-header"><i class="fas fa-brain"></i> <span data-en="Live AI Coaching" data-zh="即時 AI 輔導">Live AI Coaching</span></div>
-        <div id="tipText" class="tip-text"></div>
       </div>
     </div>
-    <div class="interview-right">
-      <div class="question-panel">
-        <h3 data-en="Interview Questions" data-zh="面試題目">Interview Questions</h3>
-        <div class="q-filters">
-          <button class="q-filter active" onclick="loadQuestions('general',this)" data-en="General" data-zh="通用">General</button>
-          <button class="q-filter" onclick="loadQuestions('subject',this)" data-en="Subject" data-zh="學科">Subject</button>
-          <button class="q-filter" onclick="loadQuestions('motivation',this)" data-en="Motivation" data-zh="動機">Motivation</button>
-          <button class="q-filter" onclick="loadQuestions('stress',this)" data-en="Stress" data-zh="壓力">Stress</button>
+  </div>
+  
+  <!-- Interview Call Screen -->
+  <div id="interviewCall" class="interview-call" style="display:none">
+    <div class="call-container">
+      <!-- Left: Interviewer (Dr. Path) -->
+      <div class="call-participant interviewer">
+        <div class="participant-video">
+          <div class="interviewer-avatar">
+            <div class="avatar-large">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="status-dot online"></div>
+          </div>
+          <div class="participant-name">Dr. Path</div>
+          <div class="participant-title">PATHS Admissions</div>
+          <!-- <div class="speaking-indicator" id="speakingIndicator">
+            <span class="pulse-dot"></span> <span data-en="Speaking" data-zh="說話中">Speaking</span>
+          </div> -->
         </div>
-        <div class="question-card" id="currentQuestion">
-          <div class="q-number" data-en="Question 1 of 5" data-zh="第 1 題，共 5 題">Question 1 of 5</div>
-          <p id="qText"></p>
-        </div>
-        <div class="q-btns">
-          <button class="btn-outline" onclick="prevQuestion()" data-en="Previous" data-zh="上一題">Previous</button>
-          <button class="btn-primary" onclick="nextQuestion()" data-en="Next Question" data-zh="下一題">Next Question</button>
-        </div>
-        <div class="answer-area">
-          <label data-en="Your Answer (optional notes)" data-zh="你的答案（可選筆記）">Your Answer</label>
-          <textarea id="answerText" rows="4" placeholder="Type your answer or notes here..."></textarea>
-          <button class="btn-secondary" onclick="getAIFeedback()" data-en="Get AI Feedback" data-zh="獲取 AI 反饋">Get AI Feedback</button>
-        </div>
-        <div id="aiFeedback" class="ai-feedback-box" style="display:none"></div>
       </div>
-      <div class="session-stats" id="sessionStats" style="display:none">
-        <h4 data-en="Session Report" data-zh="本次練習報告">Session Report</h4>
-        <div id="statsContent"></div>
+      
+      <!-- Right: User -->
+      <div class="call-participant user">
+        <div class="participant-video">
+          <video id="interviewVideo" autoplay muted playsinline></video>
+          <canvas id="expressionCanvas"></canvas>
+          <div class="cam-overlay" id="camOverlay">
+            <div class="cam-placeholder">
+              <i class="fas fa-user-circle"></i>
+              <p data-en="Your camera preview" data-zh="你的攝像頭畫面">Your camera preview</p>
+            </div>
+          </div>
+          <div class="participant-name" id="userNameDisplay">You</div>
+          <div class="expression-badges" id="expressionBadges" style="display:none">
+            <div class="badge" id="badgeAnxiety"><i class="fas fa-face-grimace"></i> <span id="anxietyLabel">Anxiety</span>: <strong id="anxietyVal">—</strong></div>
+            <div class="badge" id="badgeConfidence"><i class="fas fa-face-smile"></i> <span id="confLabel">Confidence</span>: <strong id="confVal">—</strong></div>
+            <div class="badge" id="badgePace"><i class="fas fa-microphone"></i> <span id="paceLabel">Pace</span>: <strong id="paceVal">—</strong></div>
+          </div>
+        </div>
       </div>
+    </div>
+    
+    <!-- Call Controls -->
+    <div class="call-controls">
+      <button class="control-btn" onclick="toggleMic()" id="micBtn">
+        <i class="fas fa-microphone"></i>
+      </button>
+      <button class="control-btn end-call" onclick="endInterview()">
+        <i class="fas fa-phone-slash"></i>
+      </button>
+      <button class="control-btn" onclick="toggleCamera()" id="cameraBtn">
+        <i class="fas fa-video"></i>
+      </button>
+    </div>
+    
+    <!-- Live AI Coaching -->
+    <div class="realtime-tips" id="realtimeTips" style="display:none">
+      <div class="tip-header"><i class="fas fa-brain"></i> <span data-en="Live AI Coaching" data-zh="即時 AI 輔導">Live AI Coaching</span></div>
+      <div id="tipText" class="tip-text"></div>
+    </div>
+    
+  </div>
+  
+  <!-- Report Screen -->
+  <div id="interviewReport" class="interview-report" style="display:none">
+    <div class="report-container">
+      <div class="report-header">
+        <i class="fas fa-file-alt"></i>
+        <h2 data-en="Interview Report" data-zh="面試報告">Interview Report</h2>
+        <p data-en="Review your performance and get AI-powered recommendations" data-zh="檢視你的表現並獲取 AI 建議">Review your performance and get AI-powered recommendations</p>
+      </div>
+      
+      <div class="report-grid">
+        <div class="report-card">
+          <h4><i class="fas fa-chart-line"></i> <span data-en="Overall Score" data-zh="整體評分">Overall Score</span></h4>
+          <div class="report-score" id="reportOverall">—</div>
+        </div>
+        
+        <div class="report-card">
+          <h4><i class="fas fa-clock"></i> <span data-en="Duration" data-zh="時長">Duration</span></h4>
+          <div class="report-stat" id="reportDuration">—</div>
+        </div>
+        
+        <div class="report-card">
+          <h4><i class="fas fa-comment-dots"></i> <span data-en="Questions Answered" data-zh="回答問題數">Questions Answered</span></h4>
+          <div class="report-stat" id="reportQuestions">—</div>
+        </div>
+        
+        <div class="report-card">
+          <h4><i class="fas fa-face-smile"></i> <span data-en="Confidence Level" data-zh="自信程度">Confidence Level</span></h4>
+          <div class="report-stat" id="reportConfidence">—</div>
+        </div>
+      </div>
+      
+      <div class="report-details">
+        <div class="report-section">
+          <h4><i class="fas fa-chart-bar"></i> <span data-en="Performance Breakdown" data-zh="表現分析">Performance Breakdown</span></h4>
+          <div id="reportBreakdown"></div>
+        </div>
+        
+        <div class="report-section">
+          <h4><i class="fas fa-lightbulb"></i> <span data-en="AI Recommendations" data-zh="AI 建議">AI Recommendations</span></h4>
+          <div id="reportRecommendations"></div>
+        </div>
+        
+        <div class="report-section">
+          <h4><i class="fas fa-list-check"></i> <span data-en="Question Review" data-zh="問題回顧">Question Review</span></h4>
+          <div id="reportQuestionsReview"></div>
+        </div>
+      </div>
+      
+      <div class="report-actions">
+        <button class="btn-primary" onclick="resetInterview()">
+          <i class="fas fa-rotate-left"></i> <span data-en="Practice Again" data-zh="再次練習">Practice Again</span>
+        </button>
+        <button class="btn-secondary" onclick="showSection('dashboard')">
+          <i class="fas fa-home"></i> <span data-en="Dashboard" data-zh="儀表板">Dashboard</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CAREER -->
+<section id="career" class="section">
+  <div class="page-header">
+    <h2 data-en="College Planning" data-zh="升學規劃">College Planning</h2>
+    <p data-en="Turn your university goals into an actionable timeline with AI support" data-zh="用 AI 幫你把升學目標轉成可執行的時間表">Turn your university goals into an actionable timeline with AI support</p>
+  </div>
+  <div class="career-layout">
+    <div class="career-card">
+      <h3 data-en="AI Timeline" data-zh="AI 時間線">AI Timeline</h3>
+      <p class="card-sub" data-en="Plan your next 12 months around grades, activities, applications and interviews." data-zh="把接下來 12 個月的成績、活動、申請與面試安排清楚。">Plan your next 12 months around grades, activities, applications and interviews.</p>
+      <div class="timeline-list" id="careerTimeline"></div>
+      <button class="btn-primary" onclick="generateCareerTimeline()" data-en="Generate Timeline" data-zh="生成時間線">Generate Timeline</button>
+    </div>
+    <div class="career-card">
+      <h3 data-en="Suggested Next Steps" data-zh="建議下一步">Suggested Next Steps</h3>
+      <ul class="checklist" id="careerSteps"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- PLANS -->
+<section id="plans" class="section">
+  <div class="page-header">
+    <h2 data-en="Pathspire Plans" data-zh="Pathspire 方案">Pathspire Plans</h2>
+    <p data-en="Flexible token-based access for students and families" data-zh="為學生及家庭提供靈活的代幣制方案">Flexible token-based access for students and families</p>
+  </div>
+  <div class="plans-grid">
+    <div class="plan-card">
+      <div class="plan-badge" data-en="Starter" data-zh="入門">Starter</div>
+      <h3 data-en="Monthly Boost" data-zh="月度提升">Monthly Boost</h3>
+      <div class="plan-price">$168 / month</div>
+      <ul>
+        <li data-en="AI interview practice" data-zh="AI 面試練習">AI interview practice</li>
+        <li data-en="Personal statement drafting" data-zh="個人陳述草稿">Personal statement drafting</li>
+        <li data-en="University info and match suggestions" data-zh="大學資料與配對建議">University info and match suggestions</li>
+      </ul>
+      <button class="btn-outline" data-en="Choose Starter" data-zh="選擇入門">Choose Starter</button>
+    </div>
+    <div class="plan-card featured">
+      <div class="plan-badge" data-en="Most Popular" data-zh="最受歡迎">Most Popular</div>
+      <h3 data-en="Annual Growth" data-zh="年度成長">Annual Growth</h3>
+      <div class="plan-price">$398 / year</div>
+      <ul>
+        <li data-en="Unlimited AI mock interviews" data-zh="無限次 AI 模擬面試">Unlimited AI mock interviews</li>
+        <li data-en="Priority feedback and revision support" data-zh="優先反饋與修改支援">Priority feedback and revision support</li>
+        <li data-en="School shortlist + application timeline" data-zh="選校清單與申請時間表">School shortlist + application timeline</li>
+      </ul>
+      <button class="btn-primary" data-en="Unlock Full Access" data-zh="解鎖完整功能">Unlock Full Access</button>
     </div>
   </div>
 </section>
@@ -422,6 +642,20 @@
   <div class="page-header">
     <h2 data-en="School Matching" data-zh="AI 選校配對">School Matching</h2>
     <p data-en="AI-powered university recommendations based on your profile" data-zh="基於你的檔案，AI 為你推薦最合適的大學">AI-powered university recommendations</p>
+  </div>
+  <div class="spotlight-grid">
+    <div class="spotlight-card">
+      <h4 data-en="University Spotlight: Oxford" data-zh="大學焦點：牛津">University Spotlight: Oxford</h4>
+      <p data-en="A world-class academic environment with rich tutorial teaching, global reputation and strong humanities and sciences." data-zh="享譽全球的學術環境，提供小班導修與卓越的人文與科學教育。">A world-class academic environment with rich tutorial teaching, global reputation and strong humanities and sciences.</p>
+    </div>
+    <div class="spotlight-card">
+      <h4 data-en="University Spotlight: HKU" data-zh="大學焦點：港大">University Spotlight: HKU</h4>
+      <p data-en="A leading Hong Kong university with strong medicine, business, law and research excellence for local and international applicants." data-zh="香港頂尖大學，醫學、商科、法律與研究實力突出，適合本地與國際申請者。">A leading Hong Kong university with strong medicine, business, law and research excellence for local and international applicants.</p>
+    </div>
+    <div class="spotlight-card">
+      <h4 data-en="University Spotlight: UBC" data-zh="大學焦點：英屬哥倫比亞大學">University Spotlight: UBC</h4>
+      <p data-en="A welcoming Canadian campus that combines research strength, sustainability and a diverse international student body." data-zh="加拿大知名校園，兼備研究實力、可持續發展與多元國際學生社群。">A welcoming Canadian campus that combines research strength, sustainability and a diverse international student body.</p>
+    </div>
   </div>
   <div class="school-filters">
     <div class="filter-row">
