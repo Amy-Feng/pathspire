@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pathspire — Your Study Abroad Mission</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <span class="logo-icon">✦</span>
+      <span class="logo-text">Path<span class="accent">spire</span></span>
+    </div>
+    <div class="nav-links" id="navLinks">
+      <a href="#" onclick="showSection('dashboard')" class="nav-link" data-en="Dashboard" data-zh="儀表板">Dashboard</a>
+      <a href="#" onclick="showSection('grades')" class="nav-link" data-en="Grades" data-zh="成績">Grades</a>
+      <a href="#" onclick="showSection('activities')" class="nav-link" data-en="Activities" data-zh="活動">Activities</a>
+      <a href="#" onclick="showSection('ps')" class="nav-link" data-en="Personal Statement" data-zh="個人陳述">Personal Statement</a>
+      <a href="#" onclick="showSection('interview')" class="nav-link" data-en="Interview" data-zh="面試訓練">Interview</a>
+      <a href="#" onclick="showSection('schools')" class="nav-link" data-en="Schools" data-zh="選校">Schools</a>
+    </div>
+    <div class="nav-actions">
+      <button class="lang-toggle" onclick="toggleLang()" id="langBtn">繁中</button>
+      <button class="btn-primary" onclick="showSection('dashboard')" data-en="Get Started" data-zh="立即開始">Get Started</button>
+    </div>
+    <button class="hamburger" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
+  </div>
+</nav>
+
+<!-- LANDING -->
+<section id="landing" class="section active">
+  <div class="hero">
+    <div class="hero-badge" data-en="Powered by AI · DSE · AP · A-Level · IB" data-zh="AI 驅動 · DSE · AP · A-Level · IB">Powered by AI · DSE · AP · A-Level · IB</div>
+    <h1 class="hero-title">
+      <span data-en="Your Study Abroad" data-zh="你的留學升學">Your Study Abroad</span><br/>
+      <span class="gradient-text" data-en="Mission Starts Here" data-zh="使命由此啟程">Mission Starts Here</span>
+    </h1>
+    <p class="hero-sub" data-en="Pathspire combines AI-powered tools with personalized guidance to help Hong Kong and mainland students get into their dream universities worldwide." data-zh="Pathspire 結合 AI 工具與個人化輔導，助香港及內地學生進入全球夢想大學。">
+      Pathspire combines AI-powered tools with personalized guidance to help Hong Kong and mainland students get into their dream universities worldwide.
+    </p>
+    <div class="hero-btns">
+      <button class="btn-primary large" onclick="showSection('dashboard')" data-en="Start Your Journey" data-zh="開始旅程">Start Your Journey</button>
+      <button class="btn-outline large" onclick="showSection('interview')" data-en="Try AI Interview" data-zh="試玩 AI 面試">Try AI Interview</button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">4</span><span class="stat-label" data-en="Curricula" data-zh="課程體系">Curricula</span></div>
+      <div class="stat"><span class="stat-num">50+</span><span class="stat-label" data-en="Universities" data-zh="所大學">Universities</span></div>
+      <div class="stat"><span class="stat-num">AI</span><span class="stat-label" data-en="Powered Tools" data-zh="智能工具">Powered Tools</span></div>
+    </div>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card" onclick="showSection('grades')">
+      <div class="feat-icon"><i class="fas fa-chart-bar"></i></div>
+      <h3 data-en="Grade Tracker" data-zh="成績追蹤">Grade Tracker</h3>
+      <p data-en="Input DSE, AP, A-Level or IB scores. Get instant competitiveness analysis." data-zh="輸入 DSE、AP、A-Level 或 IB 成績，即時分析競爭力。">Input DSE, AP, A-Level or IB scores. Get instant competitiveness analysis.</p>
+    </div>
+    <div class="feat-card" onclick="showSection('activities')">
+      <div class="feat-icon"><i class="fas fa-star"></i></div>
+      <h3 data-en="Activity Profile" data-zh="活動檔案">Activity Profile</h3>
+      <p data-en="Showcase your ECAs, awards, volunteering and leadership roles." data-zh="展示你的課外活動、獎項、義工及領導經歷。">Showcase your ECAs, awards, volunteering and leadership roles.</p>
+    </div>
+    <div class="feat-card" onclick="showSection('ps')">
+      <div class="feat-icon"><i class="fas fa-pen-fancy"></i></div>
+      <h3 data-en="AI Personal Statement" data-zh="AI 個人陳述">AI Personal Statement</h3>
+      <p data-en="AI-guided writing assistant for crafting a compelling personal statement." data-zh="AI 寫作助手，幫你打造出色的個人陳述。">AI-guided writing assistant for crafting a compelling personal statement.</p>
+    </div>
+    <div class="feat-card" onclick="showSection('interview')">
+      <div class="feat-icon"><i class="fas fa-video"></i></div>
+      <h3 data-en="AI Interview Coach" data-zh="AI 面試教練">AI Interview Coach</h3>
+      <p data-en="Real-time micro-expression detection. Build confidence, slow down, stay calm." data-zh="即時微表情檢測，訓練自信、放鬆、語速控制。">Real-time micro-expression detection. Build confidence, slow down, stay calm.</p>
+    </div>
+    <div class="feat-card" onclick="showSection('schools')">
+      <div class="feat-icon"><i class="fas fa-university"></i></div>
+      <h3 data-en="School Matching" data-zh="選校配對">School Matching</h3>
+      <p data-en="AI recommends universities based on your full profile and goals." data-zh="AI 根據你的完整檔案推薦最合適的大學。">AI recommends universities based on your full profile and goals.</p>
+    </div>
+    <div class="feat-card highlight-card">
+      <div class="feat-icon"><i class="fas fa-globe"></i></div>
+      <h3 data-en="HK & Global" data-zh="香港 & 海外">HK & Global</h3>
+      <p data-en="Covers HKU, CUHK, HKUST plus UK, US, Canada, Australia & more." data-zh="涵蓋港大、中大、科大及英美加澳等全球頂尖院校。">Covers HKU, CUHK, HKUST plus UK, US, Canada, Australia & more.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="section">
+  <div class="page-header">
+    <h2 data-en="My Dashboard" data-zh="我的儀表板">My Dashboard</h2>
+    <p data-en="Track your progress toward your dream university" data-zh="追蹤你邁向夢想大學的進度">Track your progress toward your dream university</p>
+  </div>
+  <div class="profile-setup" id="profileSetup">
+    <h3 data-en="Set Up Your Profile" data-zh="建立你的檔案">Set Up Your Profile</h3>
+    <div class="setup-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label data-en="Your Name" data-zh="你的姓名">Your Name</label>
+          <input type="text" id="userName" placeholder="e.g. Alex Chan" />
+        </div>
+        <div class="form-group">
+          <label data-en="Curriculum" data-zh="課程體系">Curriculum</label>
+          <select id="userCurriculum" onchange="updateCurriculumUI()">
+            <option value="">Select...</option>
+            <option value="DSE">HKDSE</option>
+            <option value="AP">AP (Advanced Placement)</option>
+            <option value="ALEVEL">A-Level</option>
+            <option value="IB">IB (International Baccalaureate)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label data-en="Target Region" data-zh="目標地區">Target Region</label>
+          <select id="targetRegion" multiple>
+            <option value="HK">Hong Kong</option>
+            <option value="UK">United Kingdom</option>
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+            <option value="AU">Australia</option>
+            <option value="EU">Europe</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-en="Target Major" data-zh="目標主修">Target Major</label>
+          <input type="text" id="targetMajor" placeholder="e.g. Computer Science" />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveProfile()" data-en="Save Profile" data-zh="儲存檔案">Save Profile</button>
+    </div>
+  </div>
+  <div class="dashboard-grid" id="dashboardGrid" style="display:none">
+    <div class="dash-card">
+      <div class="dash-card-header"><i class="fas fa-user-graduate"></i><span data-en="Profile" data-zh="檔案">Profile</span></div>
+      <div id="dashProfile"></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-header"><i class="fas fa-chart-pie"></i><span data-en="Score Summary" data-zh="成績摘要">Score Summary</span></div>
+      <div id="dashScores"><p class="muted" data-en="No grades added yet." data-zh="尚未輸入成績。">No grades added yet.</p></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-header"><i class="fas fa-tasks"></i><span data-en="Application Progress" data-zh="申請進度">Application Progress</span></div>
+      <div class="progress-checklist">
+        <div class="check-item" id="chk-grades"><i class="fas fa-circle"></i> <span data-en="Grades entered" data-zh="成績已輸入">Grades entered</span></div>
+        <div class="check-item" id="chk-activities"><i class="fas fa-circle"></i> <span data-en="Activities added" data-zh="活動已添加">Activities added</span></div>
+        <div class="check-item" id="chk-ps"><i class="fas fa-circle"></i> <span data-en="Personal statement drafted" data-zh="個人陳述已起草">Personal statement drafted</span></div>
+        <div class="check-item" id="chk-interview"><i class="fas fa-circle"></i> <span data-en="Interview practiced" data-zh="面試已練習">Interview practiced</span></div>
+      </div>
+    </div>
+    <div class="dash-card wide">
+      <div class="dash-card-header"><i class="fas fa-lightbulb"></i><span data-en="AI Recommendations" data-zh="AI 建議">AI Recommendations</span></div>
+      <div id="dashRecommendations" class="ai-tips"></div>
+    </div>
+  </div>
+</section>
+
+<!-- GRADES -->
+<section id="grades" class="section">
+  <div class="page-header">
+    <h2 data-en="Grade Tracker" data-zh="成績追蹤">Grade Tracker</h2>
+    <p data-en="Enter your subject scores to analyze your university competitiveness" data-zh="輸入科目成績，分析你的大學競爭力">Enter your subject scores to analyze your university competitiveness</p>
+  </div>
+  <div class="curriculum-tabs">
+    <button class="curr-tab active" onclick="switchCurriculum('DSE',this)">HKDSE</button>
+    <button class="curr-tab" onclick="switchCurriculum('AP',this)">AP</button>
+    <button class="curr-tab" onclick="switchCurriculum('ALEVEL',this)">A-Level</button>
+    <button class="curr-tab" onclick="switchCurriculum('IB',this)">IB</button>
+  </div>
+
+  <!-- DSE -->
+  <div id="grade-DSE" class="grade-form">
+    <h3>HKDSE Subjects</h3>
+    <div class="grade-note" data-en="Core subjects are required. Select 2–3 electives." data-zh="必修科為必填，請選擇 2–3 個選修科。">Core subjects are required. Select 2–3 electives.</div>
+    <div class="subjects-grid" id="dseSubjects"></div>
+    <button class="btn-secondary" onclick="addCustomSubject('DSE')" data-en="+ Add Subject" data-zh="+ 添加科目">+ Add Subject</button>
+  </div>
+
+  <!-- AP -->
+  <div id="grade-AP" class="grade-form" style="display:none">
+    <h3>AP Subjects</h3>
+    <div class="grade-note" data-en="AP scores are 1–5. Add as many as you've taken." data-zh="AP 分數為 1–5，請添加所有已修科目。">AP scores are 1–5. Add as many as you've taken.</div>
+    <div class="subjects-grid" id="apSubjects"></div>
+    <button class="btn-secondary" onclick="addCustomSubject('AP')" data-en="+ Add AP Subject" data-zh="+ 添加 AP 科目">+ Add AP Subject</button>
+  </div>
+
+  <!-- A-LEVEL -->
+  <div id="grade-ALEVEL" class="grade-form" style="display:none">
+    <h3>A-Level Subjects</h3>
+    <div class="grade-note" data-en="Grades: A*, A, B, C, D, E." data-zh="等級：A*、A、B、C、D、E。">Grades: A*, A, B, C, D, E.</div>
+    <div class="subjects-grid" id="alevelSubjects"></div>
+    <button class="btn-secondary" onclick="addCustomSubject('ALEVEL')" data-en="+ Add Subject" data-zh="+ 添加科目">+ Add Subject</button>
+  </div>
+
+  <!-- IB -->
+  <div id="grade-IB" class="grade-form" style="display:none">
+    <h3>IB Diploma</h3>
+    <div class="grade-note" data-en="HL subjects score 1–7. Max total: 45 points (including TOK/EE bonus)." data-zh="HL 科目 1–7 分，滿分 45 分（含 TOK/EE 加分）。">HL subjects score 1–7. Max total: 45 points.</div>
+    <div class="subjects-grid" id="ibSubjects"></div>
+    <div class="ib-extras">
+      <div class="form-group"><label>TOK + EE Bonus (0–3)</label><input type="number" id="ibBonus" min="0" max="3" placeholder="0–3" onchange="calcIBTotal()" /></div>
+      <div class="ib-total">Predicted Total: <strong id="ibTotalScore">—</strong> / 45</div>
+    </div>
+    <button class="btn-secondary" onclick="addCustomSubject('IB')" data-en="+ Add Subject" data-zh="+ 添加科目">+ Add Subject</button>
+  </div>
+
+  <div class="grade-actions">
+    <button class="btn-primary" onclick="analyzeGrades()" data-en="Analyze My Grades" data-zh="分析我的成績">Analyze My Grades</button>
+  </div>
+  <div id="gradeAnalysis" class="analysis-box" style="display:none"></div>
+</section>
+
+<!-- ACTIVITIES -->
+<section id="activities" class="section">
+  <div class="page-header">
+    <h2 data-en="Activity Profile" data-zh="活動檔案">Activity Profile</h2>
+    <p data-en="Build your extracurricular portfolio" data-zh="建立你的課外活動檔案">Build your extracurricular portfolio</p>
+  </div>
+  <div class="activity-categories">
+    <div class="act-cat-btn active" onclick="filterActivities('all',this)" data-en="All" data-zh="全部">All</div>
+    <div class="act-cat-btn" onclick="filterActivities('leadership',this)" data-en="Leadership" data-zh="領導">Leadership</div>
+    <div class="act-cat-btn" onclick="filterActivities('sports',this)" data-en="Sports" data-zh="體育">Sports</div>
+    <div class="act-cat-btn" onclick="filterActivities('arts',this)" data-en="Arts" data-zh="藝術">Arts</div>
+    <div class="act-cat-btn" onclick="filterActivities('volunteer',this)" data-en="Volunteer" data-zh="義工">Volunteer</div>
+    <div class="act-cat-btn" onclick="filterActivities('academic',this)" data-en="Academic" data-zh="學術">Academic</div>
+    <div class="act-cat-btn" onclick="filterActivities('work',this)" data-en="Work/Internship" data-zh="工作/實習">Work/Internship</div>
+  </div>
+  <div class="activity-list" id="activityList"></div>
+  <button class="btn-primary add-activity-btn" onclick="openActivityModal()" data-en="+ Add Activity" data-zh="+ 添加活動">+ Add Activity</button>
+  <div id="activityModal" class="modal" style="display:none">
+    <div class="modal-box">
+      <h3 data-en="Add Activity" data-zh="添加活動">Add Activity</h3>
+      <div class="form-group"><label data-en="Activity Name" data-zh="活動名稱">Activity Name</label><input type="text" id="actName" /></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label data-en="Category" data-zh="類別">Category</label>
+          <select id="actCategory">
+            <option value="leadership">Leadership</option>
+            <option value="sports">Sports</option>
+            <option value="arts">Arts</option>
+            <option value="volunteer">Volunteer</option>
+            <option value="academic">Academic</option>
+            <option value="work">Work/Internship</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-en="Years Active" data-zh="參與年份">Years Active</label>
+          <input type="text" id="actYears" placeholder="e.g. 2022–2024" />
+        </div>
+      </div>
+      <div class="form-group"><label data-en="Role / Position" data-zh="職位/角色">Role / Position</label><input type="text" id="actRole" placeholder="e.g. Vice President" /></div>
+      <div class="form-group"><label data-en="Description (impact, achievements)" data-zh="描述（影響力、成就）">Description</label><textarea id="actDesc" rows="3"></textarea></div>
+      <div class="form-group">
+        <label data-en="Awards / Honours" data-zh="獎項/榮譽">Awards / Honours</label>
+        <input type="text" id="actAwards" placeholder="e.g. 1st Prize, Regional Competition" />
+      </div>
+      <div class="modal-btns">
+        <button class="btn-primary" onclick="saveActivity()" data-en="Save" data-zh="儲存">Save</button>
+        <button class="btn-outline" onclick="closeActivityModal()" data-en="Cancel" data-zh="取消">Cancel</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PERSONAL STATEMENT -->
+<section id="ps" class="section">
+  <div class="page-header">
+    <h2 data-en="AI Personal Statement" data-zh="AI 個人陳述助手">AI Personal Statement</h2>
+    <p data-en="Craft a compelling story with AI guidance" data-zh="以 AI 輔助打造動人的個人陳述">Craft a compelling story with AI guidance</p>
+  </div>
+  <div class="ps-container">
+    <div class="ps-left">
+      <div class="ps-steps">
+        <div class="ps-step active" id="psstep1" onclick="goPSStep(1)"><span class="step-num">1</span><span data-en="Your Story" data-zh="你的故事">Your Story</span></div>
+        <div class="ps-step" id="psstep2" onclick="goPSStep(2)"><span class="step-num">2</span><span data-en="Motivations" data-zh="動機">Motivations</span></div>
+        <div class="ps-step" id="psstep3" onclick="goPSStep(3)"><span class="step-num">3</span><span data-en="Goals" data-zh="目標">Goals</span></div>
+        <div class="ps-step" id="psstep4" onclick="goPSStep(4)"><span class="step-num">4</span><span data-en="Generate & Refine" data-zh="生成與優化">Generate & Refine</span></div>
+      </div>
+      <div class="ps-form-area">
+        <div id="psForm1" class="ps-form-panel active">
+          <h4 data-en="Tell us about a defining experience" data-zh="分享一個對你影響深遠的經歷">Tell us about a defining experience</h4>
+          <textarea id="psStory" rows="5" placeholder="Describe a challenge, achievement, or moment that shaped who you are..."></textarea>
+          <h4 data-en="What makes you unique?" data-zh="你有什麼獨特之處？">What makes you unique?</h4>
+          <textarea id="psUnique" rows="4" placeholder="Think about your background, skills, or perspectives..."></textarea>
+        </div>
+        <div id="psForm2" class="ps-form-panel">
+          <h4 data-en="Why this subject?" data-zh="為何選擇這個學科？">Why this subject?</h4>
+          <textarea id="psSubjectWhy" rows="4" placeholder="What sparked your interest? Any books, projects, events?"></textarea>
+          <h4 data-en="Academic highlights related to your subject" data-zh="與學科相關的學術亮點">Academic highlights</h4>
+          <textarea id="psAcademic" rows="4" placeholder="Relevant coursework, projects, competitions..."></textarea>
+        </div>
+        <div id="psForm3" class="ps-form-panel">
+          <h4 data-en="Short-term goals (at university)" data-zh="短期目標（在大學期間）">Short-term goals</h4>
+          <textarea id="psShortGoal" rows="3" placeholder="What do you want to study / research / do?"></textarea>
+          <h4 data-en="Long-term career aspirations" data-zh="長遠職業抱負">Long-term career aspirations</h4>
+          <textarea id="psLongGoal" rows="3" placeholder="Where do you see yourself in 10 years?"></textarea>
+          <h4 data-en="Why this university?" data-zh="為何選擇這所大學？">Why this university?</h4>
+          <input type="text" id="psWhyUni" placeholder="e.g. Oxford, HKU, UBC..." />
+          <textarea id="psWhyUniDesc" rows="3" placeholder="Specific courses, professors, culture..."></textarea>
+        </div>
+        <div id="psForm4" class="ps-form-panel">
+          <h4 data-en="Target university & style" data-zh="目標大學和風格">Target & Style</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label data-en="Target" data-zh="目標">Target</label>
+              <select id="psTarget">
+                <option value="UCAS">UCAS (UK)</option>
+                <option value="CommonApp">Common App (US)</option>
+                <option value="HK">Hong Kong (JUPAS)</option>
+                <option value="Canada">Canada</option>
+                <option value="Australia">Australia</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label data-en="Word limit" data-zh="字數限制">Word limit</label>
+              <input type="number" id="psWordLimit" value="650" />
+            </div>
+          </div>
+          <button class="btn-primary" onclick="generatePS()" data-en="Generate Personal Statement" data-zh="生成個人陳述">Generate Personal Statement</button>
+        </div>
+      </div>
+      <div class="ps-nav-btns">
+        <button class="btn-outline" onclick="prevPSStep()" id="psPrevBtn" style="display:none" data-en="Previous" data-zh="上一步">Previous</button>
+        <button class="btn-primary" onclick="nextPSStep()" id="psNextBtn" data-en="Next" data-zh="下一步">Next</button>
+      </div>
+    </div>
+    <div class="ps-right">
+      <div class="ps-preview">
+        <div class="preview-header">
+          <span data-en="Live Preview" data-zh="即時預覽">Live Preview</span>
+          <div class="preview-actions">
+            <button class="icon-btn" onclick="copyPS()" title="Copy"><i class="fas fa-copy"></i></button>
+            <button class="icon-btn" onclick="downloadPS()" title="Download"><i class="fas fa-download"></i></button>
+          </div>
+        </div>
+        <div id="psOutput" class="ps-output-text">
+          <div class="ps-placeholder">
+            <i class="fas fa-pen-fancy"></i>
+            <p data-en="Your personal statement will appear here after generation." data-zh="填寫完畢並點擊生成後，你的個人陳述將顯示於此。">Your personal statement will appear here after generation.</p>
+          </div>
+        </div>
+        <div id="psWordCount" class="word-count"></div>
+      </div>
+      <div class="ai-suggestions" id="aiPSSuggestions" style="display:none">
+        <h4><i class="fas fa-robot"></i> <span data-en="AI Suggestions" data-zh="AI 建議">AI Suggestions</span></h4>
+        <div id="psSuggestionList"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INTERVIEW -->
+<section id="interview" class="section">
+  <div class="page-header">
+    <h2 data-en="AI Interview Coach" data-zh="AI 面試教練">AI Interview Coach</h2>
+    <p data-en="Real-time facial analysis to help you build confidence and communicate better" data-zh="即時面部分析，助你建立自信、更好地表達自己">Real-time facial analysis to build confidence</p>
+  </div>
+  <div class="interview-container">
+    <div class="interview-left">
+      <div class="camera-box" id="cameraBox">
+        <video id="interviewVideo" autoplay muted playsinline></video>
+        <canvas id="expressionCanvas"></canvas>
+        <div class="cam-overlay" id="camOverlay">
+          <div class="cam-placeholder">
+            <i class="fas fa-video"></i>
+            <p data-en="Camera preview will appear here" data-zh="攝像頭畫面將顯示於此">Camera preview will appear here</p>
+          </div>
+        </div>
+        <div class="expression-badges" id="expressionBadges" style="display:none">
+          <div class="badge" id="badgeAnxiety"><i class="fas fa-face-grimace"></i> <span id="anxietyLabel">Anxiety</span>: <strong id="anxietyVal">—</strong></div>
+          <div class="badge" id="badgeConfidence"><i class="fas fa-face-smile"></i> <span id="confLabel">Confidence</span>: <strong id="confVal">—</strong></div>
+          <div class="badge" id="badgePace"><i class="fas fa-microphone"></i> <span id="paceLabel">Pace</span>: <strong id="paceVal">—</strong></div>
+        </div>
+      </div>
+      <div class="cam-controls">
+        <button class="btn-primary" onclick="startInterview()" id="startCamBtn" data-en="Start Session" data-zh="開始練習">Start Session</button>
+        <button class="btn-outline" onclick="stopInterview()" id="stopCamBtn" style="display:none" data-en="Stop" data-zh="停止">Stop</button>
+        <button class="btn-outline" onclick="toggleMic()" id="micBtn" style="display:none"><i class="fas fa-microphone"></i></button>
+      </div>
+      <div class="realtime-tips" id="realtimeTips" style="display:none">
+        <div class="tip-header"><i class="fas fa-brain"></i> <span data-en="Live AI Coaching" data-zh="即時 AI 輔導">Live AI Coaching</span></div>
+        <div id="tipText" class="tip-text"></div>
+      </div>
+    </div>
+    <div class="interview-right">
+      <div class="question-panel">
+        <h3 data-en="Interview Questions" data-zh="面試題目">Interview Questions</h3>
+        <div class="q-filters">
+          <button class="q-filter active" onclick="loadQuestions('general',this)" data-en="General" data-zh="通用">General</button>
+          <button class="q-filter" onclick="loadQuestions('subject',this)" data-en="Subject" data-zh="學科">Subject</button>
+          <button class="q-filter" onclick="loadQuestions('motivation',this)" data-en="Motivation" data-zh="動機">Motivation</button>
+          <button class="q-filter" onclick="loadQuestions('stress',this)" data-en="Stress" data-zh="壓力">Stress</button>
+        </div>
+        <div class="question-card" id="currentQuestion">
+          <div class="q-number" data-en="Question 1 of 5" data-zh="第 1 題，共 5 題">Question 1 of 5</div>
+          <p id="qText"></p>
+        </div>
+        <div class="q-btns">
+          <button class="btn-outline" onclick="prevQuestion()" data-en="Previous" data-zh="上一題">Previous</button>
+          <button class="btn-primary" onclick="nextQuestion()" data-en="Next Question" data-zh="下一題">Next Question</button>
+        </div>
+        <div class="answer-area">
+          <label data-en="Your Answer (optional notes)" data-zh="你的答案（可選筆記）">Your Answer</label>
+          <textarea id="answerText" rows="4" placeholder="Type your answer or notes here..."></textarea>
+          <button class="btn-secondary" onclick="getAIFeedback()" data-en="Get AI Feedback" data-zh="獲取 AI 反饋">Get AI Feedback</button>
+        </div>
+        <div id="aiFeedback" class="ai-feedback-box" style="display:none"></div>
+      </div>
+      <div class="session-stats" id="sessionStats" style="display:none">
+        <h4 data-en="Session Report" data-zh="本次練習報告">Session Report</h4>
+        <div id="statsContent"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCHOOLS -->
+<section id="schools" class="section">
+  <div class="page-header">
+    <h2 data-en="School Matching" data-zh="AI 選校配對">School Matching</h2>
+    <p data-en="AI-powered university recommendations based on your profile" data-zh="基於你的檔案，AI 為你推薦最合適的大學">AI-powered university recommendations</p>
+  </div>
+  <div class="school-filters">
+    <div class="filter-row">
+      <div class="form-group">
+        <label data-en="Region" data-zh="地區">Region</label>
+        <select id="filterRegion" onchange="filterSchools()">
+          <option value="all" data-en="All Regions" data-zh="全部地區">All Regions</option>
+          <option value="HK">Hong Kong</option>
+          <option value="UK">United Kingdom</option>
+          <option value="US">United States</option>
+          <option value="CA">Canada</option>
+          <option value="AU">Australia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label data-en="Match Level" data-zh="匹配程度">Match Level</label>
+        <select id="filterMatch" onchange="filterSchools()">
+          <option value="all" data-en="All" data-zh="全部">All</option>
+          <option value="reach" data-en="Reach" data-zh="衝刺">Reach</option>
+          <option value="target" data-en="Target" data-zh="目標">Target</option>
+          <option value="safety" data-en="Safety" data-zh="保底">Safety</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label data-en="Major Field" data-zh="主修領域">Major Field</label>
+        <select id="filterMajor" onchange="filterSchools()">
+          <option value="all">All</option>
+          <option value="stem">STEM</option>
+          <option value="business">Business</option>
+          <option value="arts">Arts & Humanities</option>
+          <option value="medicine">Medicine</option>
+          <option value="law">Law</option>
+          <option value="social">Social Sciences</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="runAIMatch()" data-en="Run AI Match" data-zh="執行 AI 配對">Run AI Match</button>
+  </div>
+  <div class="school-grid" id="schoolGrid"></div>
+</section>
+
+<!-- MODALS -->
+<div id="toastContainer" class="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
