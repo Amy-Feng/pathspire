@@ -1306,23 +1306,27 @@ function downloadPS() {
 
 // Interview state
 const interviewState = {
-  active: false,
-  stream: null,
-  questions: [],
-  qIndex: 0,
-  category: 'general',
-  difficulty: 'medium',
-  questionCount: 5,
-  focusAreas: ['motivation', 'academic', 'extracurricular', 'future'],
-  sessionData: { anxiety: [], confidence: [], pace: [], answers: [] },
-  micActive: true,
-  cameraActive: true,
-  speechRec: null,
-  wordsPerMin: 0,
-  wordBuffer: [],
-  startTime: null,
-  questionStartTime: null,
-  reported: false
+    active: false,
+    stream: null,
+    questions: [],
+    qIndex: 0,
+    category: 'general',
+    difficulty: 'medium',
+    questionCount: 5,
+    focusAreas: ['motivation', 'academic', 'extracurricular', 'future'],
+    sessionData: { anxiety: [], confidence: [], pace: [], answers: [] },
+    micActive: true,
+    cameraActive: true,
+    speechRec: null,
+    wordsPerMin: 0,
+    wordBuffer: [],
+    startTime: null,
+    questionStartTime: null,
+    reported: false,
+    // ✅ Add these missing properties
+    isAnswering: false,
+    userResponded: false,
+    currentAnswer: ''
 };
 
 // Interview question bank (unchanged)
@@ -1462,80 +1466,183 @@ const DR_PATH_SCRIPT = {
 };
 
 // Start interview session
-function startInterviewSession() {
-  const type = document.getElementById('interviewType').value;
-  const difficulty = document.getElementById('interviewDifficulty').value;
-  const count = parseInt(document.getElementById('interviewQuestionCount').value);
-  
-  const focusCheckboxes = document.querySelectorAll('#interviewSetup input[type="checkbox"]:checked');
-  const focusAreas = Array.from(focusCheckboxes).map(cb => cb.value);
-  
-  const questions = generateQuestions(type, difficulty, count, focusAreas);
-  
-  if (questions.length === 0) {
-    toast('No questions available. Please try different settings.', 'error');
-    return;
-  }
-  
-  interviewState.questions = questions;
-  interviewState.qIndex = 0;
-  interviewState.difficulty = difficulty;
-  interviewState.questionCount = questions.length;
-  interviewState.focusAreas = focusAreas;
-  interviewState.sessionData = { anxiety: [], confidence: [], pace: [], answers: [] };
-  interviewState.startTime = Date.now();
-  interviewState.reported = false;
-  
-  document.getElementById('interviewSetup').style.display = 'none';
-  document.getElementById('interviewCall').style.display = 'block';
-  document.getElementById('interviewReport').style.display = 'none';
-  
-  startCamera();
-  setTimeout(() => {
-    displayQuestion();
-  }, 2000);
-  
-  toast('Interview session started! Good luck!', 'success');
+// Replace your existing startInterviewSession with this AI-powered version
+// Replace your startInterviewSession with this updated version
+async function startInterviewSession() {
+    const type = document.getElementById('interviewType').value;
+    const difficulty = document.getElementById('interviewDifficulty').value;
+    const count = parseInt(document.getElementById('interviewQuestionCount').value);
+    
+    const focusCheckboxes = document.querySelectorAll('#interviewSetup input[type="checkbox"]:checked');
+    const focusAreas = Array.from(focusCheckboxes).map(cb => cb.value);
+    
+    // ✅ SHOW the AI generation status
+    const statusEl = document.getElementById('aiGenerationStatus');
+    if (statusEl) {
+        statusEl.style.display = 'block';
+        // Update the status text
+        const statusText = statusEl.querySelector('span:first-child');
+        if (statusText) {
+            statusText.textContent = '🧠 AI is crafting personalized interview questions...';
+        }
+    }
+    
+    toast('🧠 AI is generating interview questions...', 'info');
+    const startBtn = document.querySelector('#interviewSetup .btn-primary');
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.textContent = '⏳ Generating...';
+    }
+    
+    try {
+        // ✅ Try AI first
+        let questions = await generateEnhancedInterviewQuestions();
+        
+        // If AI didn't work, fallback to local questions
+        if (!questions || questions.length === 0) {
+            console.log('⚠️ AI generation failed, using fallback questions');
+            questions = generateQuestions(type, difficulty, count, focusAreas);
+        }
+        
+        // ✅ HIDE the status after generation
+        if (statusEl) {
+            statusEl.style.display = 'none';
+        }
+        
+        if (questions.length === 0) {
+            toast('No questions available. Please try different settings.', 'error');
+            if (startBtn) {
+                startBtn.disabled = false;
+                startBtn.textContent = 'Start Interview';
+            }
+            return;
+        }
+        
+        // ✅ Store questions in interview state
+        interviewState.questions = questions;
+        interviewState.qIndex = 0;
+        interviewState.difficulty = difficulty;
+        interviewState.questionCount = questions.length;
+        interviewState.focusAreas = focusAreas;
+        interviewState.sessionData = { anxiety: [], confidence: [], pace: [], answers: [] };
+        interviewState.startTime = Date.now();
+        interviewState.reported = false;
+        interviewState.userResponded = false;
+        interviewState.currentAnswer = '';
+        
+        // ✅ Show how many questions were generated
+        const source = questions.length > 0 && questions[0].includes('AI') ? 'AI' : 'local';
+        toast(`✅ ${questions.length} questions generated (${source})`, 'success');
+        
+        // ✅ Switch UI
+        document.getElementById('interviewSetup').style.display = 'none';
+        document.getElementById('interviewCall').style.display = 'block';
+        document.getElementById('interviewReport').style.display = 'none';
+        
+        // ✅ Start camera and begin interview
+        await startCamera();
+        
+        setTimeout(() => {
+            // First display the question (will also speak it)
+            displayQuestion();
+            // Then speak Dr. Path intro (will transition to questions)
+            setTimeout(() => {
+                speakDrPathIntro();
+            }, 500);
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Interview start error:', error);
+        toast('Failed to start interview. Please try again.', 'error');
+        // ✅ Hide status on error
+        if (statusEl) {
+            statusEl.style.display = 'none';
+        }
+    } finally {
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Interview';
+        }
+    }
 }
 
-function generateQuestions(type, difficulty, count, focusAreas) {
-  let pool = [];
-  
-  if (INTERVIEW_QUESTIONS[type]) {
-    const level = INTERVIEW_QUESTIONS[type][difficulty] || INTERVIEW_QUESTIONS[type].medium;
-    pool = [...level];
-  }
-  
-  if (pool.length < count) {
-    const generalPool = INTERVIEW_QUESTIONS.general[difficulty] || INTERVIEW_QUESTIONS.general.medium;
-    pool = [...pool, ...generalPool];
-  }
-  
-  let filtered = pool;
-  if (focusAreas.length > 0 && focusAreas.length < 5) {
-    const keywords = {
-      motivation: ['motivate', 'passion', 'interest', 'drive', 'why'],
-      academic: ['academic', 'study', 'learn', 'research', 'project', 'subject', 'field'],
-      extracurricular: ['outside', 'activity', 'club', 'sport', 'volunteer', 'hobby'],
-      future: ['future', 'goal', 'aspire', 'career', 'plan', 'see yourself'],
-      challenge: ['challenge', 'difficult', 'fail', 'overcome', 'problem']
-    };
+async function generateEnhancedInterviewQuestions() {
+    const type = document.getElementById('interviewType').value;
+    const difficulty = document.getElementById('interviewDifficulty').value;
+    const count = parseInt(document.getElementById('interviewQuestionCount').value);
+    const focusCheckboxes = document.querySelectorAll('#interviewSetup input[type="checkbox"]:checked');
+    const focusAreas = Array.from(focusCheckboxes).map(cb => cb.value);
     
-    const activeKeywords = focusAreas.flatMap(f => keywords[f] || []);
-    if (activeKeywords.length > 0) {
-      filtered = pool.filter(q => 
-        activeKeywords.some(kw => q.toLowerCase().includes(kw))
-      );
-      if (filtered.length < count) {
-        const remaining = pool.filter(q => !filtered.includes(q));
-        const shuffled = remaining.sort(() => Math.random() - 0.5);
-        filtered = [...filtered, ...shuffled];
-      }
+    // ✅ Get user profile for personalized questions
+    const profile = state.profile;
+    const major = profile?.major || '';
+    const regions = profile?.regions || [];
+    const activities = profile?.activities || [];
+    
+    try {
+        console.log('🤖 Calling AI to generate questions...');
+        
+        // ✅ Update status with more specific message
+        const statusEl = document.getElementById('aiGenerationStatus');
+        if (statusEl) {
+            const statusText = statusEl.querySelector('span:first-child');
+            if (statusText) {
+                statusText.textContent = '🧠 AI is analyzing your profile and crafting questions...';
+            }
+        }
+        
+        const result = await callAI('/api/generate_questions', {
+            type: type,
+            difficulty: difficulty,
+            count: count,
+            focusAreas: focusAreas,
+            program: profile?.program || '',
+            university: regions.join(', ') || 'university',
+            major: major,
+            activities: activities.slice(0, 3).map(a => a.name).join(', '),
+            context: `Student is interested in ${major || 'undecided'} and has experience in ${activities.length || 'various'} activities. Target regions: ${regions.join(', ') || 'various'}.`
+        });
+        
+        // ✅ Update status when done
+        if (statusEl) {
+            const statusText = statusEl.querySelector('span:first-child');
+            if (statusText) {
+                statusText.textContent = '✅ Questions generated!';
+            }
+            // Small delay before hiding to show completion
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 800);
+        }
+        
+        if (result && result.questions && result.questions.length > 0) {
+            console.log(`✅ AI generated ${result.questions.length} questions`);
+            console.log('📝 First question:', result.questions[0]);
+            return result.questions;
+        }
+        
+        console.warn('⚠️ AI returned no questions, using fallback');
+        return null;
+        
+    } catch (error) {
+        console.error('❌ AI question generation error:', error);
+        // ✅ Show error in status
+        const statusEl = document.getElementById('aiGenerationStatus');
+        if (statusEl) {
+            const statusText = statusEl.querySelector('span:first-child');
+            if (statusText) {
+                statusText.textContent = '⚠️ AI generation failed. Using fallback questions...';
+                statusText.style.color = '#f87171';
+            }
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+                if (statusText) {
+                    statusText.style.color = '';
+                }
+            }, 2000);
+        }
+        return null;
     }
-  }
-  
-  const shuffled = filtered.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 
 async function startCamera() {
@@ -1569,21 +1676,145 @@ async function startCamera() {
 }
 
 function displayQuestion() {
-  const { questions, qIndex } = interviewState;
-  if (!questions.length || qIndex >= questions.length) {
-    endInterview();
-    return;
-  }
+    const { questions, qIndex } = interviewState;
+    if (!questions.length || qIndex >= questions.length) {
+        endInterview();
+        return;
+    }
 
-  const question = questions[qIndex];
-  const qTextEl = document.getElementById('qText');
-  const qProgressEl = document.getElementById('qProgress');
+    const question = questions[qIndex];
+    
+    // ✅ Show question subtly (small text) for users who need visual backup
+    const qTextEl = document.getElementById('qText');
+    const qProgressEl = document.getElementById('qProgress');
+    
+    if (qTextEl) {
+        qTextEl.textContent = question;
+        qTextEl.style.opacity = '0.5'; // Make it subtle
+        qTextEl.style.fontSize = '0.9rem';
+    }
+    if (qProgressEl) qProgressEl.textContent = `Question ${qIndex + 1} of ${questions.length}`;
 
-  if (qTextEl) qTextEl.textContent = question;
-  if (qProgressEl) qProgressEl.textContent = `Question ${qIndex + 1} of ${questions.length}`;
+    interviewState.questionStartTime = Date.now();
+    interviewState.isAnswering = false;
 
-  interviewState.questionStartTime = Date.now();
+    // ✅ SPEAK THE QUESTION with Dr. Path's voice
+    // The question will be spoken and the user will respond verbally
+    setTimeout(() => {
+        // Speak the question
+        speakText(question, () => {
+            // After speaking, show that we're listening
+            console.log('🎤 Listening for response...');
+            interviewState.isAnswering = true;
+            
+            // Update the UI to show "listening" state
+            const statusEl = document.getElementById('interviewStatus');
+            if (statusEl) {
+                statusEl.textContent = '🎤 Listening...';
+                statusEl.style.color = '#34d399';
+            }
+            
+            // Start listening (speech recognition or timer)
+            startListeningForResponse();
+        });
+    }, 500); // Small delay for natural pacing
 }
+
+let listeningTimeout = null;
+
+function startListeningForResponse() {
+    // Clear any existing timer
+    if (listeningTimeout) clearTimeout(listeningTimeout);
+    
+    // Show listening indicator
+    document.getElementById('listeningIndicator').style.display = 'flex';
+    document.getElementById('interviewStatus').textContent = '🎤 Listening for your answer...';
+    
+    // If speech recognition is active, it will capture the response
+    // If not, use a timer to move to next question after a pause
+    
+    // Set a timer to automatically move to next question after silence
+    // (speech recognition will override this)
+    listeningTimeout = setTimeout(() => {
+        // If no speech detected and user hasn't responded
+        if (!interviewState.userResponded) {
+            console.log('⏰ No response detected, moving to next question...');
+            // Show a prompt
+            toast('No response detected. Moving to next question.', 'info');
+            nextQuestion();
+        }
+    }, 15000); // 15 seconds of silence
+}
+
+// Speech recognition integration - capture user's verbal response
+function setupSpeechRecognitionForInterview() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        console.log('Speech recognition not supported');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    
+    recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+        
+        // Show what the user said
+        const userAnswerEl = document.getElementById('userAnswerDisplay');
+        if (userAnswerEl) {
+            userAnswerEl.textContent = transcript;
+            userAnswerEl.style.display = 'block';
+        }
+        
+        // Mark that user responded
+        interviewState.userResponded = true;
+        interviewState.currentAnswer = transcript;
+        
+        // Stop listening after final result
+        if (event.results[event.results.length - 1].isFinal) {
+            recognition.stop();
+            // Auto-advance after a short delay
+            setTimeout(() => {
+                nextQuestion();
+            }, 2000);
+        }
+    };
+    
+    recognition.onend = () => {
+        // If user didn't respond, auto-advance
+        if (!interviewState.userResponded) {
+            setTimeout(() => {
+                nextQuestion();
+            }, 3000);
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.log('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+            // No speech detected, auto-advance
+            setTimeout(() => {
+                nextQuestion();
+            }, 5000);
+        }
+    };
+    
+    // Store recognition instance for later use
+    window.interviewRecognition = recognition;
+}
+
+// Start listening when interview starts
+function startInterviewWithSpeechRecognition() {
+    setupSpeechRecognitionForInterview();
+}
+
+
 
 function nextQuestion() {
   const { questions, qIndex, questionStartTime } = interviewState;
@@ -2175,6 +2406,192 @@ function startCoachingTips() {
     }, 10000); // ← 改为 3000ms（3秒）
 }
 /* ──────────────────────────────────────────
+   TEXT-TO-SPEECH (FREE - Web Speech API)
+────────────────────────────────────────── */
+
+// TTS Settings
+let ttsEnabled = true;
+let ttsRate = 0.9;
+let ttsPitch = 1;
+let ttsVoice = null;
+let voicesLoaded = false;
+
+/**
+ * Load available voices
+ */
+function loadTTSVoices() {
+    return new Promise((resolve) => {
+        if (!window.speechSynthesis) {
+            console.warn('Speech synthesis not supported');
+            resolve([]);
+            return;
+        }
+        
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            voicesLoaded = true;
+            resolve(voices);
+            return;
+        }
+        
+        window.speechSynthesis.onvoiceschanged = () => {
+            voicesLoaded = true;
+            resolve(window.speechSynthesis.getVoices());
+        };
+        
+        // Fallback timeout
+        setTimeout(() => {
+            voicesLoaded = true;
+            resolve(window.speechSynthesis.getVoices());
+        }, 1000);
+    });
+}
+
+/**
+ * Get the best available voice
+ */
+function getBestVoice(voices) {
+    // Preferred voices (Chrome has the best ones)
+    const preferred = [
+        'Google UK English Female',
+        'Google US English Female',
+        'Google UK English Male',
+        'Microsoft Zira Desktop',
+        'Microsoft David Desktop',
+        'Samantha',
+        'Alex',
+        'Daniel'
+    ];
+    
+    for (const name of preferred) {
+        const found = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+        if (found) return found;
+    }
+    
+    // Fallback to any English voice
+    return voices.find(v => v.lang.startsWith('en')) || voices[0] || null;
+}
+
+/**
+ * Speak text using Web Speech API
+ */
+function speakText(text, callback = null) {
+    if (!ttsEnabled) {
+        if (callback) callback();
+        return;
+    }
+    
+    if (!window.speechSynthesis) {
+        console.warn('Speech synthesis not supported');
+        if (callback) callback();
+        return;
+    }
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Use selected voice or find best
+    if (ttsVoice) {
+        utterance.voice = ttsVoice;
+    } else {
+        const voices = window.speechSynthesis.getVoices();
+        const best = getBestVoice(voices);
+        if (best) {
+            utterance.voice = best;
+            ttsVoice = best;
+        }
+    }
+    
+    utterance.lang = 'en-US';
+    utterance.rate = ttsRate;
+    utterance.pitch = ttsPitch;
+    utterance.volume = 1;
+    
+    // Show speaking indicator
+    const indicator = document.getElementById('speakingIndicator');
+    if (indicator) indicator.style.display = 'flex';
+    
+    utterance.onstart = () => {
+        console.log('🔊 Speaking:', text.slice(0, 50) + '...');
+    };
+    
+    utterance.onend = () => {
+        console.log('🔊 Finished speaking');
+        if (indicator) indicator.style.display = 'none';
+        if (callback) callback();
+    };
+    
+    utterance.onerror = (e) => {
+        console.warn('Speech error:', e);
+        if (indicator) indicator.style.display = 'none';
+        if (callback) callback();
+    };
+    
+    window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Toggle auto-speak on/off
+ */
+function toggleAutoSpeak() {
+    ttsEnabled = !ttsEnabled;
+    const btn = document.getElementById('autoSpeakBtn');
+    if (btn) {
+        btn.innerHTML = ttsEnabled 
+            ? '<i class="fas fa-volume-up"></i> Auto-Speak' 
+            : '<i class="fas fa-volume-mute"></i> Muted';
+        btn.classList.toggle('muted', !ttsEnabled);
+    }
+    toast(ttsEnabled ? '🔊 Auto-speak enabled' : '🔇 Auto-speak disabled');
+}
+
+/**
+ * Replay the current question
+ */
+function speakCurrentQuestion() {
+    const { questions, qIndex } = interviewState;
+    if (questions && questions[qIndex]) {
+        speakText(questions[qIndex]);
+    }
+}
+
+/**
+ * Update speech rate
+ */
+function updateSpeechRate(value) {
+    ttsRate = parseFloat(value);
+    document.getElementById('speechRateDisplay').textContent = value + 'x';
+}
+
+/**
+ * Speak Dr. Path intro when interview starts
+ */
+function speakDrPathIntro() {
+    const intro = DR_PATH_SCRIPT.intro;
+    const text = intro[Math.floor(Math.random() * intro.length)];
+    
+    // Show Dr. Path speaking
+    const statusEl = document.getElementById('interviewStatus');
+    if (statusEl) {
+        statusEl.textContent = '👨‍⚕️ Dr. Path is speaking...';
+        statusEl.style.color = '#60a5fa';
+    }
+    
+    speakText(text, () => {
+        // After intro, speak the first question
+        console.log('👨‍⚕️ Intro complete, moving to question...');
+        setTimeout(() => {
+            // Make sure question is displayed and spoken
+            const { questions, qIndex } = interviewState;
+            if (questions && questions[qIndex]) {
+                displayQuestion();
+            }
+        }, 500);
+    });
+}
+/* ──────────────────────────────────────────
    SCHOOLS (unchanged)
 ────────────────────────────────────────── */
 let SCHOOL_DATA = [];
@@ -2560,6 +2977,20 @@ function checkCookieStatus() {
    INIT
 ────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+// Load TTS voices
+initInterviewSystem();
+setTimeout(async () => {
+    await loadTTSVoices();
+    const voices = window.speechSynthesis.getVoices();
+    const best = getBestVoice(voices);
+    if (best) {
+        ttsVoice = best;
+        console.log('✅ TTS voice loaded:', best.name);
+    } else {
+        console.warn('⚠️ No TTS voice available');
+    }
+}, 1000);
+
   // Check cookie status
   checkCookieStatus();
   
@@ -2625,16 +3056,14 @@ const AI_CONFIG = {
 ────────────────────────────────────────── */
 async function callAI(endpoint, data) {
     try {
-        // ✅ 直接用 buildAIPrompt 生成所有 prompt
         let prompt = buildAIPrompt(endpoint, data);
         
-        console.log('📤 发送请求 - endpoint:', endpoint);
-        console.log('📤 prompt 长度:', prompt?.length || 0);
-        console.log('📤 prompt 预览:', prompt?.slice(0, 150) + '...');
+        console.log('📤 Sending request to AI...');
+        console.log('📤 Endpoint:', endpoint);
+        console.log('📤 Data:', data);
         
         if (!prompt) {
-            console.error('❌ prompt 为空！');
-            toast('无法生成提示，请重试。', 'error');
+            console.error('❌ Prompt is empty!');
             return null;
         }
         
@@ -2646,17 +3075,20 @@ async function callAI(endpoint, data) {
             },
             body: JSON.stringify({
                 prompt: prompt,
-                max_tokens: 800,
-                temperature: 0.7
+                max_tokens: 1000,
+                temperature: 0.8,
+                // ✅ Add system message for better question generation
+                system: "You are an expert university admissions interviewer. Generate realistic, thoughtful interview questions."
             }),
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            console.error(`❌ HTTP error: ${response.status}`);
+            return null;
         }
 
         const result = await response.json();
-        console.log('📥 响应结果:', result);
+        console.log('📥 AI Response received:', result);
         
         if (result.success && result.response) {
             return parseAIResponse(endpoint, result.response);
@@ -2664,19 +3096,38 @@ async function callAI(endpoint, data) {
         
         return null;
     } catch (error) {
-        console.error('AI API Error:', error);
-        toast('AI service unavailable. Using fallback responses.', 'error');
+        console.error('❌ AI API Error:', error);
         return null;
     }
 }
-function buildAIPrompt(endpoint, data) {
-    console.log('🔍 buildAIPrompt 被调用:', endpoint, data);
-    
-    if (!data) {
-        return "Please provide a helpful response.";
-    }
 
+
+function buildAIPrompt(endpoint, data) {
+    console.log('🔍 Building AI prompt for:', endpoint, data);
+    
     switch(endpoint) {
+        case '/api/generate_questions':
+            // ✅ Better prompt for interview questions
+            return `Generate ${data.count || 5} university admissions interview questions for a student.
+
+Student Profile:
+- Major: ${data.major || 'Undecided'}
+- Target regions: ${data.university || 'Various'}
+- Interview type: ${data.type || 'general'}
+- Difficulty: ${data.difficulty || 'medium'}
+- Focus areas: ${(data.focusAreas || ['motivation']).join(', ')}
+- Context: ${data.context || ''}
+
+Requirements:
+1. Questions should be in English
+2. Each question should be on a new line, numbered (1., 2., etc.)
+3. Questions should be appropriate for a university admissions interview
+4. Make the questions sound natural and conversational
+5. If difficulty is 'hard', ask more challenging, thought-provoking questions
+6. If difficulty is 'easy', ask more straightforward, introductory questions
+
+Generate ${data.count || 5} unique, interesting questions:`;
+        
         case '/api/generate_ps':
             return `Generate a personal statement for a student applying to university. 
                     Name: ${data.name || 'Student'}
@@ -2691,22 +3142,6 @@ function buildAIPrompt(endpoint, data) {
                     Word limit: ${data.wordLimit || 650}
                     Please write a compelling personal statement in English.`;
         
-        case '/api/generate_questions':
-            return `Generate ${data.count || 5} interview questions for a university admissions interview.
-                    Type: ${data.type || 'general'}
-                    Difficulty: ${data.difficulty || 'medium'}
-                    Focus areas: ${(data.focusAreas || ['motivation']).join(', ')}
-                    Please output only the questions, numbered.`;
-        
-        case '/api/match_schools':
-            return `Based on this student profile, recommend matching universities:
-                    Curriculum: ${data.profile?.curriculum || 'DSE'}
-                    Major: ${data.profile?.major || 'Undecided'}
-                    Grades: ${JSON.stringify(data.profile?.grades || {})}
-                    Activities: ${(data.profile?.activities || []).length} activities listed
-                    Available schools: ${(data.schools || []).map(s => s.name).join(', ')}
-                    Provide match scores (0-100) and levels (reach/target/safety).`;
-        
         default:
             return JSON.stringify(data);
     }
@@ -2718,10 +3153,43 @@ function parseAIResponse(endpoint, response) {
             return { personal_statement: response };
         
         case '/api/generate_questions':
-            const questions = response.split('\n')
-                .filter(line => line.match(/^\d+\./))
-                .map(line => line.replace(/^\d+\.\s*/, '').trim());
-            return { questions: questions };
+            // ✅ Better parsing for AI-generated questions
+            const lines = response.split('\n');
+            const questions = [];
+            
+            for (const line of lines) {
+                // Match numbered questions (1., 2., etc.) or bullet points (-, *)
+                const match = line.match(/^(\d+\.|\d+\)|\-|\*)\s*(.+)/);
+                if (match) {
+                    const question = match[2].trim();
+                    if (question.length > 0) {
+                        questions.push(question);
+                    }
+                } else if (line.trim().length > 0 && !line.match(/^(Here|These|Generate|Interview)/i)) {
+                    // If no number, but it's a valid sentence, add it
+                    const trimmed = line.trim();
+                    if (trimmed.length > 10 && trimmed.endsWith('?')) {
+                        questions.push(trimmed);
+                    }
+                }
+            }
+            
+            // ✅ If we got questions, return them
+            if (questions.length > 0) {
+                console.log(`📝 Parsed ${questions.length} questions from AI response`);
+                return { questions: questions };
+            }
+            
+            // Fallback: split by question marks
+            const qs = response.split('?')
+                .filter(q => q.trim().length > 10)
+                .map(q => q.trim() + '?');
+            
+            if (qs.length > 0) {
+                return { questions: qs };
+            }
+            
+            return { questions: [] };
         
         default:
             return { response: response };
@@ -2942,6 +3410,24 @@ function generatePSWithAI() {
     generateEnhancedPS();
 }
 
+function initInterviewSystem() {
+    // Load TTS voices
+    loadTTSVoices().then(voices => {
+        console.log(`✅ Loaded ${voices.length} TTS voices`);
+        if (voices.length > 0) {
+            ttsVoice = getBestVoice(voices);
+        }
+    });
+    
+    // Setup speech recognition for user responses
+    setupSpeechRecognitionForInterview();
+    
+    // Make sure TTS is enabled by default
+    ttsEnabled = true;
+    
+    console.log('🎤 Interview system initialized');
+}
+
 // ✅ 修改 startInterviewSession 使用 AI 生成的问题
 const startInterviewWithAI = function() {
     const enhancedQuestions = generateEnhancedInterviewQuestions();
@@ -3041,3 +3527,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ AI 模块加载完成！');
+
+
+
+
+
+
+
+

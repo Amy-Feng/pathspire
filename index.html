@@ -451,6 +451,16 @@
           <button class="btn-primary large" onclick="startInterviewSession()" style="width:100%;margin-top:8px">
             <i class="fas fa-video"></i> <span data-en="Start Interview" data-zh="開始面試">Start Interview</span>
           </button>
+          <div id="aiGenerationStatus" style="display:none; padding: 10px; background: rgba(96, 165, 250, 0.1); border-radius: 8px; margin: 10px 0;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="ai-loader" style="display:inline-block; width:20px; height:20px; border:3px solid #60a5fa; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>
+                  <span>🧠 AI is crafting personalized interview questions...</span>
+              </div>
+              <div style="font-size:0.8rem; color:var(--text3); margin-top:5px;">
+                  This may take a few seconds
+              </div>
+          </div>
+
         </div>
         
         <div class="setup-tips">

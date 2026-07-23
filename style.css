@@ -1194,3 +1194,8 @@ textarea { resize: vertical; }
   .hero-btns { flex-direction: column; align-items: center; }
   .form-row { flex-direction: column; }
 }
+
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
