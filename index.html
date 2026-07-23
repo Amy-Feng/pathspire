@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="style.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 122.88 122.88'><path fill='%236c63ff' d='M62.43,122.88h-1.98c0-16.15-6.04-30.27-18.11-42.34C30.27,68.47,16.16,62.43,0,62.43v-1.98c16.16,0,30.27-6.04,42.34-18.14C54.41,30.21,60.45,16.1,60.45,0h1.98c0,16.15,6.04,30.27,18.11,42.34c12.07,12.07,26.18,18.11,42.34,18.11v1.98c-16.15,0-30.27,6.04-42.34,18.11C68.47,92.61,62.43,106.72,62.43,122.88z'/></svg>">
+  <!-- Add these to your <head> -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 </head>
 <body>
 
@@ -500,6 +504,9 @@
             <div class="badge" id="badgeConfidence"><i class="fas fa-face-smile"></i> <span id="confLabel">Confidence</span>: <strong id="confVal">—</strong></div>
             <div class="badge" id="badgePace"><i class="fas fa-microphone"></i> <span id="paceLabel">Pace</span>: <strong id="paceVal">—</strong></div>
           </div>
+          <div class="emotion-badge" id="emotionBadge" style="display:none; position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.75); padding:6px 14px; border-radius:20px; font-size:0.85rem; color:white; z-index:10; border:2px solid #34d399;">
+    😎 Confident
+</div>
         </div>
       </div>
     </div>
@@ -701,5 +708,43 @@
 <div id="toastContainer" class="toast-container"></div>
 
 <script src="app.js"></script>
+
+<!-- 放在 </body> 前任意位置 -->
+<div id="aiStatus" style="
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    font-size: 0.7rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    z-index: 9999;
+    border: 1px solid rgba(255,255,255,0.06);
+    pointer-events: none;
+    /* ↑ 如果不需要点击交互，加上这行可让点击穿透 */">
+    <span class="ai-dot" style="
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        background: #a6e3a1;
+        flex-shrink: 0;
+        animation: pulse-dot 2s ease-in-out infinite;"></span>
+    AI Ready
+</div>
+
+<!-- 可选：呼吸灯动画 -->
+<style>
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+}
+</style>
+
 </body>
 </html>

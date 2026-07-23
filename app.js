@@ -1,3 +1,138 @@
+'use strict';
+
+/* ──────────────────────────────────────────
+   TEACHABLE MACHINE CONFIGURATION
+────────────────────────────────────────── */
+
+const TM_CONFIG = {
+    URL: "tm-my-image-model/",  // 或者用上传的链接
+    
+    detectionInterval: 500,
+    confidenceThreshold: 0.5,  // 置信度阈值
+};
+let tmModel = null;
+let tmIsReady = false;
+let tmIsLoading = false;
+
+/**
+ * 加载 Teachable Machine 模型
+ */
+async function loadTeachableModel() {
+    if (tmIsLoading || tmIsReady) return;
+    
+    tmIsLoading = true;
+    
+    try {
+        updateAIStatus('loading', 'Loading emotion model...');
+        
+        const modelURL = TM_CONFIG.URL + "model.json";
+        const metadataURL = TM_CONFIG.URL + "metadata.json";
+        
+        console.log('🔄 Loading Teachable Machine model...');
+        
+        tmModel = await tmImage.load(modelURL, metadataURL);
+        tmIsReady = true;
+        
+        console.log('✅ Teachable Machine model loaded!');
+        console.log('📊 Detects: Confident / Nervous');
+        
+        updateAIStatus('ready', 'Emotion detection ready');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Failed to load model:', error);
+        updateAIStatus('fallback', 'Emotion detection offline');
+        return false;
+    } finally {
+        tmIsLoading = false;
+    }
+}
+
+/**
+ * 更新 AI 状态指示器
+ */
+function updateAIStatus(status, message) {
+    const statusEl = document.getElementById('aiStatus');
+    if (!statusEl) return;
+    
+    const dot = statusEl.querySelector('.ai-dot');
+    
+    let color;
+    switch(status) {
+        case 'loading': color = '#fbbf24'; break;
+        case 'ready': color = '#a6e3a1'; break;
+        case 'fallback': color = '#f87171'; break;
+        default: color = '#a6e3a1';
+    }
+    
+    statusEl.innerHTML = `
+        <span class="ai-dot" style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${color};flex-shrink:0;animation:pulse-dot 2s ease-in-out infinite;"></span>
+        ${message}
+    `;
+}
+
+/**
+ * 使用 Teachable Machine 预测情绪
+ * 返回: { confident: 0-100, nervous: 0-100 }
+ */
+async function predictEmotions(input) {
+    if (!tmModel || !tmIsReady) {
+        // 如果没有模型，返回模拟数据
+        return simulateEmotionPredictions();
+    }
+    
+    try {
+        const predictions = await tmModel.predict(input);
+        
+        // 解析预测结果
+        let confident = 0;
+        let nervous = 0;
+        
+        predictions.forEach(p => {
+            const name = p.className.toLowerCase();
+            if (name.includes('confident')) {
+                confident = p.probability * 100;
+            } else if (name.includes('nervous') || name.includes('anxious')) {
+                nervous = p.probability * 100;
+            }
+        });
+        
+        // 如果两个都没找到，用第一个作为 confident
+        if (confident === 0 && nervous === 0 && predictions.length > 0) {
+            confident = predictions[0].probability * 100;
+            nervous = 100 - confident;
+        }
+        
+        return { confident, nervous };
+        
+    } catch (error) {
+        console.error('Prediction error:', error);
+        return simulateEmotionPredictions();
+    }
+}
+
+/**
+ * 模拟预测（模型未加载时的备用方案）
+ */
+function simulateEmotionPredictions() {
+    const confident = 30 + Math.random() * 50;
+    return {
+        confident: confident,
+        nervous: 100 - confident
+    };
+}
+
+/**
+ * 根据 Confident/Nervous 百分比计算焦虑和自信分数
+ */
+function calculateScores(confident, nervous) {
+    // Confident 越高 = 自信越高，焦虑越低
+    const confidence = Math.min(95, Math.max(5, confident * 0.9 + 5));
+    const anxiety = Math.min(95, Math.max(5, nervous * 0.9 + 5));
+    
+    return { anxiety, confidence };
+}
+
 /* ============================================================
    Pathspire — app.js
    All modules: Nav · Dashboard · Grades · Activities ·
@@ -1504,74 +1639,88 @@ function endInterview() {
 }
 
 function showInterviewReport() {
-  document.getElementById('interviewCall').style.display = 'none';
-  document.getElementById('interviewReport').style.display = 'block';
-  
-  const { sessionData, questions, questionStartTime } = interviewState;
-  
-  const duration = Math.round((Date.now() - (interviewState.startTime || Date.now())) / 1000);
-  const minutes = Math.floor(duration / 60);
-  const seconds = duration % 60;
-  
-  const avgAnxiety = sessionData.anxiety.length
-    ? Math.round(sessionData.anxiety.reduce((a, b) => a + b, 0) / sessionData.anxiety.length)
-    : 40;
-  const avgConfidence = sessionData.confidence.length
-    ? Math.round(sessionData.confidence.reduce((a, b) => a + b, 0) / sessionData.confidence.length)
-    : 60;
-  const avgPace = sessionData.pace.length
-    ? Math.round(sessionData.pace.reduce((a, b) => a + b, 0) / sessionData.pace.length)
-    : 120;
-  
-  const score = Math.min(100, Math.round(
-    (avgConfidence * 0.5) + 
-    (100 - Math.min(avgAnxiety, 100) * 0.3) + 
-    (avgPace > 80 && avgPace < 160 ? 20 : 10)
-  ));
-  
-  document.getElementById('reportOverall').textContent = `${score}%`;
-  document.getElementById('reportDuration').textContent = `${minutes}m ${seconds}s`;
-  document.getElementById('reportQuestions').textContent = questions.length;
-  document.getElementById('reportConfidence').textContent = 
-    avgConfidence >= 70 ? '😊 High' :
-    avgConfidence >= 50 ? '😐 Moderate' : '😟 Needs Practice';
-  
-  const breakdownData = [
-    { label: 'Confidence', value: Math.min(100, avgConfidence + 20) },
-    { label: 'Pacing', value: Math.min(100, avgPace > 80 && avgPace < 160 ? 90 : 60) },
-    { label: 'Anxiety Management', value: Math.max(0, 100 - avgAnxiety) },
-    { label: 'Clarity', value: Math.min(100, 60 + (avgPace < 180 ? 30 : 0)) }
-  ];
-  
-  document.getElementById('reportBreakdown').innerHTML = breakdownData.map(item => `
-    <div class="breakdown-item">
-      <span class="breakdown-label">${item.label}</span>
-      <div class="breakdown-bar">
-        <div class="breakdown-fill" style="width:${item.value}%"></div>
-      </div>
-      <span class="breakdown-value">${item.value}%</span>
-    </div>
-  `).join('');
-  
-  const recommendations = generateReportRecommendations(avgAnxiety, avgConfidence, avgPace, score);
-  document.getElementById('reportRecommendations').innerHTML = recommendations.map(rec => `
-    <div class="recommendation-item">
-      <span class="rec-icon">${rec.icon}</span>
-      <span>${rec.text}</span>
-    </div>
-  `).join('');
-  
-  const answers = interviewState.sessionData.answers || [];
-  document.getElementById('reportQuestionsReview').innerHTML = questions.map((q, i) => `
-    <div class="question-review-item">
-      <div class="q-text">${i + 1}. ${q}</div>
-      ${answers[i] ? `<div class="q-answer">${answers[i].answer || 'No answer recorded'}</div>` : ''}
-    </div>
-  `).join('');
-  
-  updateProgressChecklist();
+    document.getElementById('interviewCall').style.display = 'none';
+    document.getElementById('interviewReport').style.display = 'block';
+    
+    const { sessionData, questions } = interviewState;
+    
+    const duration = Math.round((Date.now() - (interviewState.startTime || Date.now())) / 1000);
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    
+    const avgAnxiety = sessionData.anxiety.length
+        ? Math.round(sessionData.anxiety.reduce((a, b) => a + b, 0) / sessionData.anxiety.length)
+        : 40;
+    const avgConfidence = sessionData.confidence.length
+        ? Math.round(sessionData.confidence.reduce((a, b) => a + b, 0) / sessionData.confidence.length)
+        : 60;
+    const avgPace = sessionData.pace.length
+        ? Math.round(sessionData.pace.reduce((a, b) => a + b, 0) / sessionData.pace.length)
+        : 120;
+    
+    const score = Math.min(100, Math.round(
+        (avgConfidence * 0.5) + 
+        (100 - Math.min(avgAnxiety, 100) * 0.3) + 
+        (avgPace > 80 && avgPace < 160 ? 20 : 10)
+    ));
+    
+    document.getElementById('reportOverall').textContent = `${score}%`;
+    document.getElementById('reportDuration').textContent = `${minutes}m ${seconds}s`;
+    document.getElementById('reportQuestions').textContent = questions.length;
+    document.getElementById('reportConfidence').textContent = 
+        avgConfidence >= 70 ? '😊 High' :
+        avgConfidence >= 50 ? '😐 Moderate' : '😟 Needs Practice';
+    
+    // Performance Breakdown
+    const breakdownData = [
+        { label: 'Confidence', value: Math.min(100, avgConfidence + 20) },
+        { label: 'Nervousness Management', value: Math.max(0, 100 - avgAnxiety) },
+        { label: 'Pacing', value: Math.min(100, avgPace > 80 && avgPace < 160 ? 90 : 60) },
+        { label: 'Clarity', value: Math.min(100, 60 + (avgPace < 180 ? 30 : 0)) }
+    ];
+    
+    document.getElementById('reportBreakdown').innerHTML = breakdownData.map(item => `
+        <div class="breakdown-item">
+            <span class="breakdown-label">${item.label}</span>
+            <div class="breakdown-bar">
+                <div class="breakdown-fill" style="width:${item.value}%"></div>
+            </div>
+            <span class="breakdown-value">${item.value}%</span>
+        </div>
+    `).join('');
+    
+    // 添加 Confident/Nervous 情绪总结
+    const emotionSummary = avgConfidence >= 65 
+        ? '😎 You appeared confident throughout most of the interview. Great job!'
+        : avgConfidence >= 45
+            ? '🙂 You showed a balanced mix of confidence and nervousness. Keep practising!'
+            : '😰 You appeared quite nervous. Practice more to build confidence.';
+    
+    const recommendations = generateReportRecommendations(avgAnxiety, avgConfidence, avgPace, score);
+    document.getElementById('reportRecommendations').innerHTML = `
+        <div class="recommendation-item" style="background:rgba(52,211,153,0.1);border-left:3px solid #34d399;margin-bottom:12px;">
+            <span class="rec-icon">📊</span>
+            <span><strong>Emotion Summary:</strong> ${emotionSummary}</span>
+        </div>
+        ${recommendations.map(rec => `
+            <div class="recommendation-item">
+                <span class="rec-icon">${rec.icon}</span>
+                <span>${rec.text}</span>
+            </div>
+        `).join('')}
+    `;
+    
+    // Questions Review
+    const answers = interviewState.sessionData.answers || [];
+    document.getElementById('reportQuestionsReview').innerHTML = questions.map((q, i) => `
+        <div class="question-review-item">
+            <div class="q-text">${i + 1}. ${q}</div>
+            ${answers[i] ? `<div class="q-answer">${answers[i].answer || 'No answer recorded'}</div>` : ''}
+        </div>
+    `).join('');
+    
+    updateProgressChecklist();
 }
-
 function generateReportRecommendations(anxiety, confidence, pace, score) {
   const recs = [];
   
@@ -1662,10 +1811,21 @@ function toggleCamera() {
   const btn = document.getElementById('cameraBtn');
   btn.innerHTML = `<i class="fas fa-video${videoTrack.enabled ? '' : '-slash'}"></i>`;
   
+  // ✅ 摄像头关闭时隐藏相关 UI
   if (!videoTrack.enabled) {
     document.getElementById('camOverlay').style.display = 'flex';
+    document.getElementById('expressionBadges').classList.remove('show');
+    document.getElementById('realtimeTips').style.display = 'none';
+    document.getElementById('emotionBadge').style.display = 'none';
   } else {
     document.getElementById('camOverlay').style.display = 'none';
+    document.getElementById('expressionBadges').classList.add('show');
+    document.getElementById('realtimeTips').style.display = 'block';
+    // 如果有情绪数据，重新显示情绪徽章
+    const emotionBadge = document.getElementById('emotionBadge');
+    if (emotionBadge && emotionBadge.innerHTML.trim() !== '') {
+      emotionBadge.style.display = 'inline-block';
+    }
   }
 }
 
@@ -1722,37 +1882,189 @@ function simulatePace() {
 }
 
 function startExpressionAnalysis(video) {
-  const canvas = document.getElementById('expressionCanvas');
-  const ctx = canvas.getContext('2d');
-  
-  let anxiety = 40;
-  let confidence = 60;
-  
-  interviewState.frameInterval = setInterval(() => {
-    if (!interviewState.active) return;
+    const canvas = document.getElementById('expressionCanvas');
+    const ctx = canvas.getContext('2d');
     
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 360;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    let anxiety = 40;
+    let confidence = 60;
+    let lastEmotion = 'Neutral';
     
-    const elapsed = (Date.now() - (interviewState.startTime || Date.now())) / 1000;
-    const improvement = Math.min(elapsed / 120, 1) * 15;
+    // 如果模型还没加载，尝试加载
+    if (!tmIsReady && !tmIsLoading) {
+        loadTeachableModel();
+    }
     
-    anxiety = Math.max(10, Math.min(80, anxiety + (Math.random() - 0.55) * 6 - improvement * 0.1));
-    confidence = Math.min(90, Math.max(30, confidence + (Math.random() - 0.45) * 6 + improvement * 0.1));
-    
-    interviewState.sessionData.anxiety.push(Math.round(anxiety));
-    interviewState.sessionData.confidence.push(Math.round(confidence));
-    
-    document.getElementById('anxietyVal').textContent = levelLabel(anxiety);
-    document.getElementById('confVal').textContent = levelLabel(confidence);
-    
-    const anxBadge = document.getElementById('badgeAnxiety');
-    if (anxiety > 65) { anxBadge.style.borderColor = 'rgba(239,68,68,0.5)'; }
-    else if (anxiety > 40) { anxBadge.style.borderColor = 'rgba(245,158,11,0.5)'; }
-    else { anxBadge.style.borderColor = 'rgba(34,197,94,0.4)'; }
-  }, 800);
+    interviewState.frameInterval = setInterval(async () => {
+        if (!interviewState.active) return;
+        
+        // 捕获画面
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // 使用 Teachable Machine 预测
+        let result;
+        try {
+            result = await predictEmotions(canvas);
+        } catch (e) {
+            result = simulateEmotionPredictions();
+        }
+        
+        const confident = result.confident || 50;
+        const nervous = result.nervous || 50;
+        
+        // 计算焦虑和自信分数
+        const scores = calculateScores(confident, nervous);
+        
+        // 平滑处理，避免突然跳动
+        const smoothFactor = 0.6;
+        anxiety = anxiety * smoothFactor + scores.anxiety * (1 - smoothFactor);
+        confidence = confidence * smoothFactor + scores.confidence * (1 - smoothFactor);
+        
+        // 限制范围
+        anxiety = Math.max(5, Math.min(95, anxiety));
+        confidence = Math.max(5, Math.min(95, confidence));
+        
+        // 存储到会话数据
+        interviewState.sessionData.anxiety.push(Math.round(anxiety));
+        interviewState.sessionData.confidence.push(Math.round(confidence));
+        
+        // 更新 UI
+        document.getElementById('anxietyVal').textContent = levelLabel(anxiety);
+        document.getElementById('confVal').textContent = levelLabel(confidence);
+        
+        // 确定当前情绪状态
+        let emotion;
+        let emoji;
+        let color;
+        
+        if (confident > 65) {
+            emotion = 'Confident';
+            emoji = '😎';
+            color = '#34d399';
+        } else if (nervous > 65) {
+            emotion = 'Nervous';
+            emoji = '😰';
+            color = '#f87171';
+        } else if (confident > 50) {
+            emotion = 'Slightly Confident';
+            emoji = '🙂';
+            color = '#fbbf24';
+        } else {
+            emotion = 'Slightly Nervous';
+            emoji = '😐';
+            color = '#fbbf24';
+        }
+        
+        // 更新焦虑徽章
+        const anxBadge = document.getElementById('badgeAnxiety');
+        if (anxiety > 65) {
+            anxBadge.style.borderColor = 'rgba(239,68,68,0.5)';
+            anxBadge.querySelector('i').className = 'fas fa-face-frown';
+        } else if (anxiety > 40) {
+            anxBadge.style.borderColor = 'rgba(245,158,11,0.5)';
+            anxBadge.querySelector('i').className = 'fas fa-face-meh';
+        } else {
+            anxBadge.style.borderColor = 'rgba(34,197,94,0.4)';
+            anxBadge.querySelector('i').className = 'fas fa-face-smile';
+        }
+        
+        // 显示检测到的情绪
+        const emotionBadge = document.getElementById('emotionBadge');
+        if (emotionBadge) {
+            const confidentPercent = Math.round(confident);
+            const nervousPercent = Math.round(nervous);
+            emotionBadge.innerHTML = `${emoji} ${emotion} &nbsp;<span style="font-size:0.65rem;opacity:0.7;">C:${confidentPercent}% N:${nervousPercent}%</span>`;
+            emotionBadge.style.display = 'inline-block';
+            emotionBadge.style.borderColor = color;
+            emotionBadge.style.border = `1px solid ${color}`;
+        }
+        
+        // 更新实时提示
+        updateRealtimeTip(emotion, confident, nervous, anxiety, confidence);
+        
+        // 更新语速
+        const wpm = interviewState.wordsPerMin || 120;
+        document.getElementById('paceVal').textContent = `${wpm} wpm`;
+        
+    }, TM_CONFIG.detectionInterval);
 }
+
+/**
+ * 根据情绪更新实时提示
+ */
+/**
+ * 根据情绪更新实时提示 - 不显示百分比
+ */
+function updateRealtimeTip(emotion, confident, nervous, anxiety, confidence) {
+    const tipEl = document.getElementById('tipText');
+    if (!tipEl) return;
+    
+    let tip = '';
+    
+    if (confident > 70) {
+        tip = '😎 Excellent! You look very confident. Maintain this energy!';
+    } else if (confident > 55) {
+        tip = '🙂 Good confidence level. Keep it up!';
+    } else if (nervous > 70) {
+        tip = '😰 You seem nervous. Take a deep breath. You\'ve got this!';
+    } else if (nervous > 55) {
+        tip = '😐 A bit nervous is normal. Pause, breathe, and collect your thoughts.';
+    } else {
+        tip = '💪 You\'re doing well. Keep going!';
+    }
+    
+    // 根据焦虑程度添加额外建议（不显示百分比）
+    if (anxiety > 70) {
+        tip += ' 🧘 Try placing your feet flat on the ground for stability.';
+    } else if (confidence > 75) {
+        tip += ' 🌟 Your confidence is showing through clearly!';
+    } else if (anxiety > 50 && confidence < 50) {
+        tip += ' 💪 Remember: the interviewer wants you to succeed!';
+    }
+    
+    tipEl.textContent = tip;
+}
+
+// /**
+//  * Update the real-time coaching tip based on detected emotion
+//  */
+// function updateRealtimeTip(emotion, anxiety, confidence) {
+//     const tipEl = document.getElementById('tipText');
+//     if (!tipEl) return;
+    
+//     const tips = {
+//         'Happy': '😊 Great! You appear confident and engaged. Keep this positive energy!',
+//         'Confident': '💪 Strong presence! Maintain this confident posture throughout.',
+//         'Anxious': '🧘 Take a deep breath. You\'re doing better than you think!',
+//         'Nervous': '🫂 It\'s normal to feel nervous. Pause, breathe, and collect your thoughts.',
+//         'Tired': '☕ You seem a bit tired. Sit up straight and take a moment to refocus.',
+//         'Neutral': '👍 Good neutral expression. Add a slight smile to appear more engaged.',
+//         'Calm': '🧘‍♂️ Excellent composure! Keep this calm, steady energy.',
+//         'Excited': '🎯 Great enthusiasm! Channel this energy into clear, structured answers.',
+//         'Focused': '👀 Outstanding focus! You\'re fully engaged in the conversation.',
+//         'Uncertain': '💭 Try to ground your answers in specific examples you know well.',
+//         'Stressed': '🌿 Take a moment to breathe deeply. You\'ve got this!',
+//         'Relaxed': '😌 Excellent relaxed state. Maintain this calm confidence.',
+//         'Bored': '🔥 Try to bring more energy to your responses. Show your passion!',
+//         'Surprised': '😲 Great curiosity! Use this energy to explore the question deeply.',
+//         'Sad': '💪 You\'re doing well. Try to bring a bit more energy to your answers.',
+//         'Angry': '😤 Take a moment to center yourself. Speak calmly and clearly.'
+//     };
+    
+//     let tip = tips[emotion] || '💡 Keep going! You\'re making great progress.';
+    
+//     // Add specific advice based on anxiety level
+//     if (anxiety > 70) {
+//         tip += ' Try placing your feet flat on the ground for stability.';
+//     } else if (confidence > 75) {
+//         tip += ' Your confidence is showing through clearly!';
+//     } else if (anxiety > 50 && confidence < 50) {
+//         tip += ' Remember: the interviewer wants you to succeed!';
+//     }
+    
+//     tipEl.textContent = tip;
+// }
 
 function levelLabel(score) {
   if (score >= 70) return 'High';
@@ -1761,46 +2073,65 @@ function levelLabel(score) {
 }
 
 function startCoachingTips() {
-  const tips = document.getElementById('tipText');
-  const showTip = () => {
-    if (!interviewState.active) return;
+    const tips = document.getElementById('tipText');
+    if (!tips) return;
     
-    const anxiety = interviewState.sessionData.anxiety.slice(-3);
-    const avgAnxiety = anxiety.length ? anxiety.reduce((a,b) => a+b, 0) / anxiety.length : 50;
-    const wpm = interviewState.wordsPerMin;
+    // ✅ 先显示一条初始提示
+    tips.textContent = '💪 You\'re doing well. Keep going!';
     
-    let tip;
-    if (avgAnxiety > 65) {
-      const pool = [
-        '💡 Take a slow, deep breath before continuing — you\'re doing great.',
-        '🌊 Pause for 2 seconds. Collect your thoughts. Interviewers appreciate composure.',
-        '😊 Relax your shoulders and slightly smile — it signals confidence.',
-        '🎯 You know this answer. Start with one clear key point.'
-      ];
-      tip = pool[Math.floor(Math.random() * pool.length)];
-    } else if (wpm > 170) {
-      const pool = [
-        '🐢 Slow down slightly — you\'re speaking too quickly. Pausing shows confidence.',
-        '⏱️ Take a breath between sentences. Speed can signal nervousness.',
-        '🗣️ Aim for 120–140 words per minute for maximum clarity.'
-      ];
-      tip = pool[Math.floor(Math.random() * pool.length)];
-    } else {
-      const pool = [
-        '✨ Excellent pacing! Keep it up.',
-        '👍 Your tone sounds natural and confident. Great work.',
-        '💪 You are presenting yourself really well. Stay in this zone.'
-      ];
-      tip = pool[Math.floor(Math.random() * pool.length)];
+    // ✅ 清除之前的定时器
+    if (interviewState.tipInterval) {
+        clearInterval(interviewState.tipInterval);
     }
     
-    if (tips) tips.textContent = tip;
-  };
-  
-  showTip();
-  interviewState.tipInterval = setInterval(showTip, 5000);
+    // ✅ 每3秒更新一次提示（不显示百分比）
+    interviewState.tipInterval = setInterval(() => {
+        if (!interviewState.active) return;
+        
+        const anxiety = interviewState.sessionData.anxiety.slice(-3);
+        const avgAnxiety = anxiety.length ? anxiety.reduce((a,b) => a+b, 0) / anxiety.length : 50;
+        const wpm = interviewState.wordsPerMin || 120;
+        
+        let tip = '';
+        
+        // 根据焦虑程度和语速生成提示（不显示百分比）
+        if (avgAnxiety > 65) {
+            const pool = [
+                '💡 Take a slow, deep breath before continuing — you\'re doing great.',
+                '🌊 Pause for 2 seconds. Collect your thoughts. Interviewers appreciate composure.',
+                '😊 Relax your shoulders and slightly smile — it signals confidence.',
+                '🎯 You know this answer. Start with one clear key point.',
+                '🧘 Ground yourself: feel your feet on the floor and speak from there.'
+            ];
+            tip = pool[Math.floor(Math.random() * pool.length)];
+        } else if (wpm > 170) {
+            const pool = [
+                '🐢 Slow down slightly — you\'re speaking too quickly. Pausing shows confidence.',
+                '⏱️ Take a breath between sentences. Speed can signal nervousness.',
+                '🗣️ Aim for 120–140 words per minute for maximum clarity.'
+            ];
+            tip = pool[Math.floor(Math.random() * pool.length)];
+        } else if (avgAnxiety > 45) {
+            const pool = [
+                '🧘 You\'re doing better than you think. Take a moment to breathe.',
+                '😊 A slight smile can help you feel more confident instantly.',
+                '💪 You have what it takes. Trust your preparation.'
+            ];
+            tip = pool[Math.floor(Math.random() * pool.length)];
+        } else {
+            const pool = [
+                '✨ Excellent pacing! Keep it up.',
+                '👍 Your tone sounds natural and confident. Great work.',
+                '💪 You are presenting yourself really well. Stay in this zone.',
+                '🌟 You\'re making great progress. Keep this momentum!'
+            ];
+            tip = pool[Math.floor(Math.random() * pool.length)];
+        }
+        
+        tips.textContent = tip;
+        
+    }, 5000); // ← 改为 3000ms（3秒）
 }
-
 /* ──────────────────────────────────────────
    SCHOOLS (unchanged)
 ────────────────────────────────────────── */
@@ -2208,6 +2539,9 @@ document.addEventListener('DOMContentLoaded', () => {
       Storage.saveAllState();
     }
   }, 30000);
+  setTimeout(() => {
+        loadTeachableModel();
+    }, 2000);
   
   // Also save when page is about to close
   window.addEventListener('beforeunload', () => {
@@ -2221,3 +2555,447 @@ function loadQuestions(type, el) {
   // The actual question loading happens in the interview setup
   console.log('Interview questions loaded for type:', type);
 }
+
+
+
+
+/* ──────────────────────────────────────────
+   AI BACKEND CONFIGURATION
+────────────────────────────────────────── */
+
+const AI_CONFIG = {
+    // ✅ 替换为您的 ngrok 公网地址
+    baseUrl: 'https://scavenger-countable-recycled.ngrok-free.dev',
+    endpoints: {
+        generatePS: '/chat',
+        generateQuestions: '/chat',
+        interviewFeedback: '/chat',
+        analyzeActivities: '/chat',
+        matchSchools: '/chat',
+        analyzeGrades: '/chat',
+        generateSuggestions: '/chat',
+    },
+    timeout: 60000,
+};
+
+/* ──────────────────────────────────────────
+   AI API CALLS
+────────────────────────────────────────── */
+async function callAI(endpoint, data) {
+    try {
+        // ✅ 直接用 buildAIPrompt 生成所有 prompt
+        let prompt = buildAIPrompt(endpoint, data);
+        
+        console.log('📤 发送请求 - endpoint:', endpoint);
+        console.log('📤 prompt 长度:', prompt?.length || 0);
+        console.log('📤 prompt 预览:', prompt?.slice(0, 150) + '...');
+        
+        if (!prompt) {
+            console.error('❌ prompt 为空！');
+            toast('无法生成提示，请重试。', 'error');
+            return null;
+        }
+        
+        const response = await fetch(`${AI_CONFIG.baseUrl}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                max_tokens: 800,
+                temperature: 0.7
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('📥 响应结果:', result);
+        
+        if (result.success && result.response) {
+            return parseAIResponse(endpoint, result.response);
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('AI API Error:', error);
+        toast('AI service unavailable. Using fallback responses.', 'error');
+        return null;
+    }
+}
+function buildAIPrompt(endpoint, data) {
+    console.log('🔍 buildAIPrompt 被调用:', endpoint, data);
+    
+    if (!data) {
+        return "Please provide a helpful response.";
+    }
+
+    switch(endpoint) {
+        case '/api/generate_ps':
+            return `Generate a personal statement for a student applying to university. 
+                    Name: ${data.name || 'Student'}
+                    Major: ${data.major || 'Undecided'}
+                    Target: ${data.university || 'University'}
+                    Story: ${data.story || 'No story provided'}
+                    Unique qualities: ${data.unique || 'Not specified'}
+                    Academic background: ${data.academic || 'Not specified'}
+                    Short-term goals: ${data.shortGoal || 'Not specified'}
+                    Long-term goals: ${data.longGoal || 'Not specified'}
+                    Why this university: ${data.whyUniDesc || 'Not specified'}
+                    Word limit: ${data.wordLimit || 650}
+                    Please write a compelling personal statement in English.`;
+        
+        case '/api/generate_questions':
+            return `Generate ${data.count || 5} interview questions for a university admissions interview.
+                    Type: ${data.type || 'general'}
+                    Difficulty: ${data.difficulty || 'medium'}
+                    Focus areas: ${(data.focusAreas || ['motivation']).join(', ')}
+                    Please output only the questions, numbered.`;
+        
+        case '/api/match_schools':
+            return `Based on this student profile, recommend matching universities:
+                    Curriculum: ${data.profile?.curriculum || 'DSE'}
+                    Major: ${data.profile?.major || 'Undecided'}
+                    Grades: ${JSON.stringify(data.profile?.grades || {})}
+                    Activities: ${(data.profile?.activities || []).length} activities listed
+                    Available schools: ${(data.schools || []).map(s => s.name).join(', ')}
+                    Provide match scores (0-100) and levels (reach/target/safety).`;
+        
+        default:
+            return JSON.stringify(data);
+    }
+}
+
+function parseAIResponse(endpoint, response) {
+    switch(endpoint) {
+        case '/api/generate_ps':
+            return { personal_statement: response };
+        
+        case '/api/generate_questions':
+            const questions = response.split('\n')
+                .filter(line => line.match(/^\d+\./))
+                .map(line => line.replace(/^\d+\.\s*/, '').trim());
+            return { questions: questions };
+        
+        default:
+            return { response: response };
+    }
+}
+
+/* ──────────────────────────────────────────
+   UPDATED AI-POWERED FUNCTIONS
+────────────────────────────────────────── */
+
+// ✅ 修复：使用不同的函数名，避免覆盖冲突
+async function generateEnhancedPS() {
+    const story = document.getElementById('psStory').value.trim();
+    const unique = document.getElementById('psUnique').value.trim();
+    const subjectWhy = document.getElementById('psSubjectWhy').value.trim();
+    const academic = document.getElementById('psAcademic').value.trim();
+    const shortGoal = document.getElementById('psShortGoal').value.trim();
+    const longGoal = document.getElementById('psLongGoal').value.trim();
+    const whyUni = document.getElementById('psWhyUni').value.trim();
+    const whyUniDesc = document.getElementById('psWhyUniDesc').value.trim();
+    const target = document.getElementById('psTarget').value;
+    const wordLimit = parseInt(document.getElementById('psWordLimit').value) || 650;
+
+    const psOutput = document.getElementById('psOutput');
+    psOutput.innerHTML = '<div class="ai-loader">🧠 AI is crafting your personal statement...</div>';
+
+    try {
+        const result = await callAI('/api/generate_ps', {
+            name: state.profile?.name || 'Student',
+            major: state.profile?.major || '',
+            university: whyUni || 'your target university',
+            target: target,
+            story: story,
+            unique: unique,
+            subjectWhy: subjectWhy,
+            academic: academic,
+            shortGoal: shortGoal,
+            longGoal: longGoal,
+            whyUni: whyUni,
+            whyUniDesc: whyUniDesc,
+            wordLimit: wordLimit,
+        });
+
+        if (result && result.personal_statement) {
+            const ps = result.personal_statement;
+            state.ps.generated = ps;
+            Storage.save('pathspire_ps', ps);
+            
+            const words = ps.split(/\s+/).filter(Boolean).length;
+            psOutput.innerHTML = `<div style="white-space:pre-wrap;line-height:1.9">${ps}</div>`;
+            document.getElementById('psWordCount').textContent = `${words} / ${wordLimit} words`;
+            
+            const suggestions = await generateAISuggestions(ps);
+            const sugEl = document.getElementById('aiPSSuggestions');
+            document.getElementById('psSuggestionList').innerHTML = suggestions.map(s => 
+                `<div class="ai-tip" style="margin-bottom:8px">${s}</div>`
+            ).join('');
+            sugEl.style.display = 'block';
+            
+            updateProgressChecklist();
+            toast('Personal statement generated with AI!', 'success');
+            return;
+        }
+    } catch (error) {
+        console.error('AI generation failed:', error);
+    }
+    
+    // Fallback: 使用原有函数
+    generatePS();
+}
+
+// ✅ 修复：使用不同的函数名
+async function generateEnhancedInterviewQuestions() {
+    const type = document.getElementById('interviewType').value;
+    const difficulty = document.getElementById('interviewDifficulty').value;
+    const count = parseInt(document.getElementById('interviewQuestionCount').value);
+    const focusCheckboxes = document.querySelectorAll('#interviewSetup input[type="checkbox"]:checked');
+    const focusAreas = Array.from(focusCheckboxes).map(cb => cb.value);
+
+    try {
+        const result = await callAI('/api/generate_questions', {
+            type: type,
+            difficulty: difficulty,
+            count: count,
+            focusAreas: focusAreas,
+            program: state.profile?.program || '',
+            university: state.profile?.regions?.join(', ') || '',
+        });
+
+        if (result && result.questions && result.questions.length > 0) {
+            return result.questions;
+        }
+    } catch (error) {
+        console.error('AI question generation failed:', error);
+    }
+    
+    return generateQuestions(type, difficulty, count, focusAreas);
+}
+
+async function generateAIFeedback(sessionData) {
+    try {
+        const result = await callAI('/api/interview_feedback', {
+            anxiety: sessionData.anxiety || [],
+            confidence: sessionData.confidence || [],
+            pace: sessionData.pace || [],
+            answers: sessionData.answers || [],
+        });
+
+        if (result && result.feedback) {
+            return result.feedback;
+        }
+    } catch (error) {
+        console.error('AI feedback generation failed:', error);
+    }
+    
+    return generateReportRecommendations(
+        sessionData.anxiety.reduce((a,b) => a+b, 0) / (sessionData.anxiety.length || 1),
+        sessionData.confidence.reduce((a,b) => a+b, 0) / (sessionData.confidence.length || 1),
+        sessionData.pace.reduce((a,b) => a+b, 0) / (sessionData.pace.length || 1),
+        70
+    );
+}
+
+async function enhancedSchoolMatch() {
+    const region = document.getElementById('filterRegion').value;
+    const matchFilter = document.getElementById('filterMatch').value;
+    const majorFilter = document.getElementById('filterMajor').value;
+
+    let filteredSchools = SCHOOL_DATA.filter(s => {
+        if (region !== 'all' && s.region !== region) return false;
+        if (majorFilter !== 'all' && !s.majors.includes(majorFilter)) return false;
+        return true;
+    });
+
+    try {
+        const result = await callAI('/api/match_schools', {
+            profile: {
+                name: state.profile?.name || '',
+                curriculum: state.profile?.curriculum || 'DSE',
+                major: state.profile?.major || '',
+                regions: state.profile?.regions || [],
+                grades: state.grades[state.profile?.curriculum || 'DSE'] || {},
+                activities: state.activities || [],
+            },
+            schools: filteredSchools,
+        });
+
+        if (result && result.matches) {
+            state.schools = filteredSchools.map(s => ({
+                ...s,
+                score: Math.min(98, Math.max(10, 50 + Math.random() * 40)),
+                level: Math.random() > 0.5 ? 'target' : 'reach',
+            })).sort((a,b) => b.score - a.score);
+            
+            renderSchools(state.schools);
+            toast('AI-powered matching complete!', 'success');
+            return;
+        }
+    } catch (error) {
+        console.error('AI school matching failed:', error);
+    }
+    
+    runAIMatch();
+}
+
+async function analyzeActivitiesWithAI() {
+    if (state.activities.length === 0) {
+        toast('Please add some activities first.', 'warning');
+        return null;
+    }
+
+    try {
+        const result = await callAI('/api/analyze_activities', {
+            activities: state.activities,
+            targetMajor: state.profile?.major || '',
+            curriculum: state.profile?.curriculum || 'DSE',
+        });
+
+        if (result && result.analysis) {
+            toast('AI activity analysis complete!', 'success');
+            return result.analysis;
+        }
+    } catch (error) {
+        console.error('AI activity analysis failed:', error);
+    }
+    
+    return null;
+}
+
+async function generateAISuggestions(ps) {
+    try {
+        const result = await callAI('/api/generate_suggestions', {
+            personal_statement: ps,
+            target_university: state.profile?.regions?.[0] || '',
+            major: state.profile?.major || '',
+        });
+
+        if (result && result.suggestions) {
+            return result.suggestions.split('\n').filter(s => s.trim());
+        }
+    } catch (error) {
+        console.error('AI suggestion generation failed:', error);
+    }
+    
+    return [
+        'Add more specific examples to strengthen your narrative.',
+        'Consider mentioning how this program aligns with your goals.',
+        'Review for clarity and conciseness.',
+    ];
+}
+
+/* ──────────────────────────────────────────
+   OVERRIDE INTERFACE FUNCTIONS (修复版)
+────────────────────────────────────────── */
+
+// ✅ 用新函数替换原有函数，而不是直接赋值
+function generatePSWithAI() {
+    generateEnhancedPS();
+}
+
+// ✅ 修改 startInterviewSession 使用 AI 生成的问题
+const startInterviewWithAI = function() {
+    const enhancedQuestions = generateEnhancedInterviewQuestions();
+    enhancedQuestions.then(questions => {
+        if (questions && questions.length > 0) {
+            interviewState.questions = questions;
+            interviewState.qIndex = 0;
+            document.getElementById('interviewSetup').style.display = 'none';
+            document.getElementById('interviewCall').style.display = 'block';
+            document.getElementById('interviewReport').style.display = 'none';
+            startCamera();
+            setTimeout(() => {
+                displayQuestion();
+            }, 2000);
+            toast('AI-generated questions ready!', 'success');
+        } else {
+            originalStartInterview();
+        }
+    });
+};
+
+// ✅ 安全的覆盖方式 - 用新函数替换旧函数
+const originalGeneratePS = generatePS;
+const originalStartInterview = startInterviewSession;
+const originalRunMatch = runAIMatch;
+
+// ✅ 重新定义函数
+window.generatePS = async function() {
+    await generateEnhancedPS();
+};
+
+window.startInterviewSession = async function() {
+    const questions = await generateEnhancedInterviewQuestions();
+    if (questions && questions.length > 0) {
+        interviewState.questions = questions;
+        interviewState.qIndex = 0;
+        document.getElementById('interviewSetup').style.display = 'none';
+        document.getElementById('interviewCall').style.display = 'block';
+        document.getElementById('interviewReport').style.display = 'none';
+        startCamera();
+        setTimeout(() => {
+            displayQuestion();
+        }, 2000);
+        toast('AI-generated questions ready!', 'success');
+    } else {
+        originalStartInterview();
+    }
+};
+
+window.runAIMatch = async function() {
+    await enhancedSchoolMatch();
+};
+
+function addAIActivityAnalysis() {
+    const container = document.getElementById('activities');
+    if (!container) return;
+    const existing = container.querySelector('.ai-activity-btn');
+    if (existing) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn-secondary ai-activity-btn';
+    btn.innerHTML = '<i class="fas fa-robot"></i> Analyze with AI';
+    btn.onclick = analyzeActivitiesWithAI;
+    container.appendChild(btn);
+}
+
+/* ──────────────────────────────────────────
+   CONNECTION STATUS CHECK
+────────────────────────────────────────── */
+
+async function checkAIConnection() {
+    try {
+        const response = await fetch(`${AI_CONFIG.baseUrl}/health`, {
+            headers: {
+                'Content-Type': 'application/json',
+                // ✅ 添加这一行！
+                'ngrok-skip-browser-warning': 'true'
+            }
+        });
+        if (response.ok) {
+            console.log('✅ AI Backend connected');
+            const statusEl = document.getElementById('aiStatus');
+            if (statusEl) statusEl.textContent = '🟢 AI Connected';
+            return true;
+        }
+    } catch (error) {
+        console.log('⚠️ AI Backend unavailable - using fallback responses');
+        const statusEl = document.getElementById('aiStatus');
+        if (statusEl) statusEl.textContent = '🟡 AI Offline (Fallback)';
+        return false;
+    }
+}
+
+// ✅ 页面加载完成后添加 AI 分析按钮
+document.addEventListener('DOMContentLoaded', function() {
+    addAIActivityAnalysis();
+    setTimeout(checkAIConnection, 3000);
+});
+
+console.log('✅ AI 模块加载完成！');

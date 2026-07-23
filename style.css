@@ -516,6 +516,8 @@ textarea { resize: vertical; }
   border-radius: var(--radius);
   border: 1px solid var(--border);
   overflow: hidden;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .call-container {
@@ -523,7 +525,7 @@ textarea { resize: vertical; }
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   padding: 4px;
-  min-height: 500px;
+  min-height: 340px;
   background: var(--bg3);
 }
 
@@ -532,14 +534,14 @@ textarea { resize: vertical; }
   background: var(--bg2);
   border-radius: 10px;
   overflow: hidden;
-  min-height: 400px;
+  min-height: 300px;
 }
 
 .participant-video {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 400px;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -562,25 +564,25 @@ textarea { resize: vertical; }
   pointer-events: none;
 }
 
-/* Interviewer Avatar */
+/* 面试官头像 */
 .interviewer-avatar {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   z-index: 2;
 }
 
 .avatar-large {
-  width: 120px;
-  height: 120px;
+  width: 80px;                 /* ← 从 120px 改小 */
+  height: 80px;                /* ← 从 120px 改小 */
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), #8b7cf8);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
+  font-size: 32px;             /* ← 从 48px 改小 */
   color: #fff;
   box-shadow: var(--glow);
   position: relative;
@@ -590,8 +592,8 @@ textarea { resize: vertical; }
   position: absolute;
   bottom: 4px;
   right: 4px;
-  width: 16px;
-  height: 16px;
+  width: 12px;                 /* ← 从 16px 改小 */
+  height: 12px;                /* ← 从 16px 改小 */
   border-radius: 50%;
   border: 2px solid var(--bg2);
 }
@@ -600,92 +602,40 @@ textarea { resize: vertical; }
   background: var(--success);
 }
 
-.status-dot.offline {
-  background: var(--danger);
-}
-
 .participant-name {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.9rem;           /* ← 从 1.1rem 改小 */
   z-index: 2;
   margin-top: 4px;
 }
 
 #userNameDisplay {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   margin-top: 0;
-  padding: 6px 10px;
+  padding: 4px 10px;
   background: rgba(0, 0, 0, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   backdrop-filter: blur(8px);
+  font-size: 0.75rem;
 }
 
 .participant-title {
   color: var(--text2);
-  font-size: 0.85rem;
+  font-size: 0.7rem;           /* ← 从 0.85rem 改小 */
   z-index: 2;
 }
 
-.speaking-indicator {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  color: var(--success);
-  font-size: 0.8rem;
-  font-weight: 600;
-  z-index: 2;
-  margin-top: 4px;
-}
-
-.speaking-indicator.active {
-  display: flex;
-}
-
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--success);
-  animation: pulse 1s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-/* User video overlay */
-.cam-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg3);
-  z-index: 1;
-}
-
-.cam-placeholder {
-  text-align: center;
-  color: var(--text3);
-}
-
-.cam-placeholder i {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-/* Expression badges on user video */
+/* 表达徽章 */
 .expression-badges {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
   display: none;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
   z-index: 3;
 }
@@ -694,40 +644,44 @@ textarea { resize: vertical; }
   display: flex;
 }
 
-.badge {
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 4px 12px;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 
-.badge i {
-  color: var(--primary);
+/* 情绪徽章 - 右下角放大版 */
+.emotion-badge {
+  font-size: 0.9rem !important;
+  padding: 10px 20px !important;
+  bottom: 16px !important;
+  right: 16px !important;
+  top: auto !important;
+  left: auto !important;
+  min-width: 160px !important;
+  border-radius: 14px !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(12px);
+  border: 2px solid #34d399;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  font-weight: 600;
+  color: white;
 }
 
 /* ===== CALL CONTROLS ===== */
 .call-controls {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;                   /* ← 从 16px 改小 */
+  padding: 10px;               /* ← 从 16px 改小 */
   background: var(--card);
   border-top: 1px solid var(--border);
 }
 
 .control-btn {
-  width: 52px;
-  height: 52px;
+  width: 40px;                 /* ← 从 52px 改小 */
+  height: 40px;                /* ← 从 52px 改小 */
   border-radius: 50%;
   border: none;
   background: var(--card2);
   color: var(--text);
-  font-size: 1.2rem;
+  font-size: 0.9rem;           /* ← 从 1.2rem 改小 */
   cursor: pointer;
   transition: all 0.25s;
   display: flex;
@@ -735,23 +689,68 @@ textarea { resize: vertical; }
   justify-content: center;
 }
 
-.control-btn:hover {
-  transform: scale(1.05);
-  background: var(--border);
-}
-
 .control-btn.end-call {
   background: var(--danger);
   color: #fff;
+  width: 44px;                 /* ← 稍微大一点突出结束按钮 */
+  height: 44px;
 }
 
-.control-btn.end-call:hover {
-  background: #dc2626;
+/* ===== REALTIME TIPS - 美化版 ===== */
+.realtime-tips {
+  max-width: 600px !important;
+  margin: 8px auto !important;
+  padding: 12px 24px !important;
+  background: linear-gradient(135deg, rgba(108,99,255,0.12), rgba(108,99,255,0.04)) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(108,99,255,0.2) !important;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
 }
 
-.control-btn.muted {
-  background: var(--danger);
-  color: #fff;
+.realtime-tips .tip-header {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.realtime-tips .tip-header i {
+  font-size: 0.9rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.realtime-tips .tip-text {
+  color: var(--text);
+  font-size: 0.95rem !important;
+  min-height: 28px !important;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 4px 0;
+  transition: all 0.3s ease;
+}
+
+/* 根据不同情绪状态显示不同颜色 */
+.realtime-tips.tip-confident {
+  border-color: rgba(52,211,153,0.4);
+  background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(52,211,153,0.04));
+}
+
+.realtime-tips.tip-nervous {
+  border-color: rgba(239,68,68,0.4);
+  background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04));
+}
+
+.realtime-tips.tip-neutral {
+  border-color: rgba(251,191,36,0.3);
+  background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.03));
 }
 
 /* ===== QUESTION OVERLAY ===== */
