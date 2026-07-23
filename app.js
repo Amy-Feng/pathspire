@@ -1885,79 +1885,114 @@ function startExpressionAnalysis(video) {
     const canvas = document.getElementById('expressionCanvas');
     const ctx = canvas.getContext('2d');
     
+    // 画布尺寸（小一点减少绘制负担）
+    const W = 420;
+    const H = 280;
+    canvas.width = W;
+    canvas.height = H;
+    
     let anxiety = 40;
     let confidence = 60;
-    let lastEmotion = 'Neutral';
+    let lastAIUpdate = 0;
+    const AI_INTERVAL = 1200; // AI 推理间隔 1.2秒
     
-    // 如果模型还没加载，尝试加载
+    // 缓存 DOM 元素
+    const anxietyVal = document.getElementById('anxietyVal');
+    const confVal = document.getElementById('confVal');
+    const paceVal = document.getElementById('paceVal');
+    const anxBadge = document.getElementById('badgeAnxiety');
+    const emotionBadge = document.getElementById('emotionBadge');
+    
+    // 缓存上次的值
+    let lastAnxiety = -1;
+    let lastConfidence = -1;
+    
     if (!tmIsReady && !tmIsLoading) {
         loadTeachableModel();
     }
     
-    interviewState.frameInterval = setInterval(async () => {
-        if (!interviewState.active) return;
+    // ✅ 绘制循环：每帧都绘制（~30fps = 33ms）
+    function drawFrame(timestamp) {
+        if (!interviewState.active) {
+            interviewState.frameInterval = requestAnimationFrame(drawFrame);
+            return;
+        }
         
-        // 捕获画面
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 360;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // ✅ 1. 每帧都绘制摄像头画面（流畅）
+        ctx.drawImage(video, 0, 0, W, H);
         
-        // 使用 Teachable Machine 预测
-        let result;
+        // ✅ 2. 每帧都更新语速
+        const wpm = interviewState.wordsPerMin || 120;
+        paceVal.textContent = `${wpm} wpm`;
+        
+        // ✅ 3. 只有到时间才做 AI 推理
+        if (timestamp - lastAIUpdate >= AI_INTERVAL) {
+            lastAIUpdate = timestamp;
+            performAIInference();
+        }
+        
+        interviewState.frameInterval = requestAnimationFrame(drawFrame);
+    }
+    
+    // ✅ AI 推理函数（1.2秒执行一次）
+    async function performAIInference() {
         try {
-            result = await predictEmotions(canvas);
+            let result;
+            try {
+                result = await predictEmotions(canvas);
+            } catch (e) {
+                result = simulateEmotionPredictions();
+            }
+            
+            const confident = result.confident || 50;
+            const nervous = result.nervous || 50;
+            const scores = calculateScores(confident, nervous);
+            
+            const smoothFactor = 0.6;
+            anxiety = anxiety * smoothFactor + scores.anxiety * (1 - smoothFactor);
+            confidence = confidence * smoothFactor + scores.confidence * (1 - smoothFactor);
+            
+            anxiety = Math.max(5, Math.min(95, anxiety));
+            confidence = Math.max(5, Math.min(95, confidence));
+            
+            interviewState.sessionData.anxiety.push(Math.round(anxiety));
+            interviewState.sessionData.confidence.push(Math.round(confidence));
+            
+            // 只在数值变化时更新 DOM
+            const roundedAnxiety = Math.round(anxiety);
+            const roundedConfidence = Math.round(confidence);
+            
+            if (roundedAnxiety !== lastAnxiety) {
+                lastAnxiety = roundedAnxiety;
+                anxietyVal.textContent = `${roundedAnxiety}%`;
+            }
+            if (roundedConfidence !== lastConfidence) {
+                lastConfidence = roundedConfidence;
+                confVal.textContent = `${roundedConfidence}%`;
+            }
+            
+            // 更新情绪徽章
+            updateEmotionBadge(confident, nervous, anxiety, confidence);
+            
         } catch (e) {
-            result = simulateEmotionPredictions();
+            console.warn('AI inference error:', e);
         }
-        
-        const confident = result.confident || 50;
-        const nervous = result.nervous || 50;
-        
-        // 计算焦虑和自信分数
-        const scores = calculateScores(confident, nervous);
-        
-        // 平滑处理，避免突然跳动
-        const smoothFactor = 0.6;
-        anxiety = anxiety * smoothFactor + scores.anxiety * (1 - smoothFactor);
-        confidence = confidence * smoothFactor + scores.confidence * (1 - smoothFactor);
-        
-        // 限制范围
-        anxiety = Math.max(5, Math.min(95, anxiety));
-        confidence = Math.max(5, Math.min(95, confidence));
-        
-        // 存储到会话数据
-        interviewState.sessionData.anxiety.push(Math.round(anxiety));
-        interviewState.sessionData.confidence.push(Math.round(confidence));
-        
-        // 更新 UI
-        document.getElementById('anxietyVal').textContent = levelLabel(anxiety);
-        document.getElementById('confVal').textContent = levelLabel(confidence);
-        
-        // 确定当前情绪状态
-        let emotion;
-        let emoji;
-        let color;
-        
+    }
+    
+    // ✅ 更新情绪徽章
+    function updateEmotionBadge(confident, nervous, anxiety, confidence) {
+        let emotion, emoji, color;
         if (confident > 65) {
-            emotion = 'Confident';
-            emoji = '😎';
-            color = '#34d399';
+            emotion = 'Confident'; emoji = '😎'; color = '#34d399';
         } else if (nervous > 65) {
-            emotion = 'Nervous';
-            emoji = '😰';
-            color = '#f87171';
+            emotion = 'Nervous'; emoji = '😰'; color = '#f87171';
         } else if (confident > 50) {
-            emotion = 'Slightly Confident';
-            emoji = '🙂';
-            color = '#fbbf24';
+            emotion = 'Slightly Confident'; emoji = '🙂'; color = '#fbbf24';
         } else {
-            emotion = 'Slightly Nervous';
-            emoji = '😐';
-            color = '#fbbf24';
+            emotion = 'Slightly Nervous'; emoji = '😐'; color = '#fbbf24';
         }
         
-        // 更新焦虑徽章
-        const anxBadge = document.getElementById('badgeAnxiety');
+        // 更新焦虑徽章颜色
         if (anxiety > 65) {
             anxBadge.style.borderColor = 'rgba(239,68,68,0.5)';
             anxBadge.querySelector('i').className = 'fas fa-face-frown';
@@ -1969,27 +2004,34 @@ function startExpressionAnalysis(video) {
             anxBadge.querySelector('i').className = 'fas fa-face-smile';
         }
         
-        // 显示检测到的情绪
-        const emotionBadge = document.getElementById('emotionBadge');
+        // 更新情绪徽章
         if (emotionBadge) {
             const confidentPercent = Math.round(confident);
             const nervousPercent = Math.round(nervous);
-            emotionBadge.innerHTML = `${emoji} ${emotion} &nbsp;<span style="font-size:0.65rem;opacity:0.7;">C:${confidentPercent}% N:${nervousPercent}%</span>`;
+            emotionBadge.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:2px;font-size:0.7rem;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span>${emoji}</span>
+                        <span style="font-weight:600;">${emotion}</span>
+                        <span style="font-size:0.6rem;opacity:0.7;">
+                            C: ${confidentPercent}% | N: ${nervousPercent}%
+                        </span>
+                    </div>
+                    <div style="display:flex;gap:2px;height:4px;width:100%;border-radius:2px;overflow:hidden;background:#2d2d3d;">
+                        <div style="flex:${confident};height:100%;background:#34d399;"></div>
+                        <div style="flex:${nervous};height:100%;background:#f87171;"></div>
+                    </div>
+                </div>
+            `;
             emotionBadge.style.display = 'inline-block';
             emotionBadge.style.borderColor = color;
-            emotionBadge.style.border = `1px solid ${color}`;
+            emotionBadge.style.border = `2px solid ${color}`;
         }
-        
-        // 更新实时提示
-        updateRealtimeTip(emotion, confident, nervous, anxiety, confidence);
-        
-        // 更新语速
-        const wpm = interviewState.wordsPerMin || 120;
-        document.getElementById('paceVal').textContent = `${wpm} wpm`;
-        
-    }, TM_CONFIG.detectionInterval);
+    }
+    
+    // ✅ 启动绘制循环
+    interviewState.frameInterval = requestAnimationFrame(drawFrame);
 }
-
 /**
  * 根据情绪更新实时提示
  */
@@ -2130,7 +2172,7 @@ function startCoachingTips() {
         
         tips.textContent = tip;
         
-    }, 5000); // ← 改为 3000ms（3秒）
+    }, 10000); // ← 改为 3000ms（3秒）
 }
 /* ──────────────────────────────────────────
    SCHOOLS (unchanged)
