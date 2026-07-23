@@ -1468,6 +1468,7 @@ const DR_PATH_SCRIPT = {
 // Start interview session
 // Replace your existing startInterviewSession with this AI-powered version
 // Replace your startInterviewSession with this updated version
+// 修改 startInterviewSession 函数
 async function startInterviewSession() {
     const type = document.getElementById('interviewType').value;
     const difficulty = document.getElementById('interviewDifficulty').value;
@@ -1476,14 +1477,15 @@ async function startInterviewSession() {
     const focusCheckboxes = document.querySelectorAll('#interviewSetup input[type="checkbox"]:checked');
     const focusAreas = Array.from(focusCheckboxes).map(cb => cb.value);
     
-    // ✅ SHOW the AI generation status
+    // ✅ 立即显示 AI 生成状态（点击按钮后立刻出现）
     const statusEl = document.getElementById('aiGenerationStatus');
     if (statusEl) {
         statusEl.style.display = 'block';
-        // Update the status text
+        // 重置样式（清除之前的错误状态）
         const statusText = statusEl.querySelector('span:first-child');
         if (statusText) {
             statusText.textContent = '🧠 AI is crafting personalized interview questions...';
+            statusText.style.color = 'white'; // 重置颜色
         }
     }
     
@@ -1495,16 +1497,16 @@ async function startInterviewSession() {
     }
     
     try {
-        // ✅ Try AI first
+        // ✅ 尝试 AI 生成问题
         let questions = await generateEnhancedInterviewQuestions();
         
-        // If AI didn't work, fallback to local questions
+        // 如果 AI 失败，使用备用问题
         if (!questions || questions.length === 0) {
             console.log('⚠️ AI generation failed, using fallback questions');
             questions = generateQuestions(type, difficulty, count, focusAreas);
         }
         
-        // ✅ HIDE the status after generation
+        // ✅ 隐藏状态（生成完成）
         if (statusEl) {
             statusEl.style.display = 'none';
         }
@@ -1518,7 +1520,7 @@ async function startInterviewSession() {
             return;
         }
         
-        // ✅ Store questions in interview state
+        // ✅ 存储问题到 interview state
         interviewState.questions = questions;
         interviewState.qIndex = 0;
         interviewState.difficulty = difficulty;
@@ -1530,22 +1532,22 @@ async function startInterviewSession() {
         interviewState.userResponded = false;
         interviewState.currentAnswer = '';
         
-        // ✅ Show how many questions were generated
+        // ✅ 显示生成了多少问题
         const source = questions.length > 0 && questions[0].includes('AI') ? 'AI' : 'local';
         toast(`✅ ${questions.length} questions generated (${source})`, 'success');
         
-        // ✅ Switch UI
+        // ✅ 切换 UI
         document.getElementById('interviewSetup').style.display = 'none';
         document.getElementById('interviewCall').style.display = 'block';
         document.getElementById('interviewReport').style.display = 'none';
         
-        // ✅ Start camera and begin interview
+        // ✅ 启动摄像头并开始面试
         await startCamera();
         
         setTimeout(() => {
-            // First display the question (will also speak it)
+            // 先显示问题
             displayQuestion();
-            // Then speak Dr. Path intro (will transition to questions)
+            // 然后播放 Dr. Path 介绍
             setTimeout(() => {
                 speakDrPathIntro();
             }, 500);
@@ -1554,7 +1556,7 @@ async function startInterviewSession() {
     } catch (error) {
         console.error('❌ Interview start error:', error);
         toast('Failed to start interview. Please try again.', 'error');
-        // ✅ Hide status on error
+        // ✅ 出错时隐藏状态
         if (statusEl) {
             statusEl.style.display = 'none';
         }
