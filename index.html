@@ -132,14 +132,14 @@
       <div class="form-row">
         <div class="form-group">
           <label data-en="Target Region" data-zh="目標地區">Target Region</label>
-          <select id="targetRegion" multiple>
-            <option value="HK">Hong Kong</option>
-            <option value="UK">United Kingdom</option>
-            <option value="US">United States</option>
-            <option value="CA">Canada</option>
-            <option value="AU">Australia</option>
-            <option value="EU">Europe</option>
-          </select>
+          <div id="regionCheckboxes" class="checkbox-group">
+            <label class="checkbox-label"><input type="checkbox" value="HK"> Hong Kong</label>
+            <label class="checkbox-label"><input type="checkbox" value="UK"> United Kingdom</label>
+            <label class="checkbox-label"><input type="checkbox" value="US"> United States</label>
+            <label class="checkbox-label"><input type="checkbox" value="CA"> Canada</label>
+            <label class="checkbox-label"><input type="checkbox" value="AU"> Australia</label>
+            <label class="checkbox-label"><input type="checkbox" value="EU"> Europe</label>
+          </div>
         </div>
         <div class="form-group">
           <label data-en="Target Major" data-zh="目標主修">Target Major</label>
@@ -163,7 +163,7 @@
       <div id="dashScores"><p class="muted" data-en="No grades added yet." data-zh="尚未輸入成績。">No grades added yet.</p></div>
     </div>
     <div class="dash-card">
-      <div class="dash-card-header"><i class="fas fa-tasks"></i><span data-en="Application Progress" data-zh="申請進度">Application Progress</span></div>
+      <div class="dash-card-header"><i class="fas fa-tasks"></i><span data-en="Preparation Progress" data-zh="申請進度">Preparation Progress</span></div>
       <div class="progress-checklist">
         <div class="check-item" id="chk-grades"><i class="fas fa-circle"></i> <span data-en="Grades entered" data-zh="成績已輸入">Grades entered</span></div>
         <div class="check-item" id="chk-activities"><i class="fas fa-circle"></i> <span data-en="Activities added" data-zh="活動已添加">Activities added</span></div>
@@ -723,7 +723,7 @@
 <div id="aiStatus" style="
     position: fixed;
     bottom: 24px;
-    right: 24px;
+    left: 24px;
     font-size: 0.7rem;
     padding: 6px 14px;
     border-radius: 20px;

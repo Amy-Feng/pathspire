@@ -1,3 +1,39 @@
+/* ===== CHECKBOX GROUP ===== */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+}
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text);
+  transition: all 0.2s;
+  user-select: none;
+}
+.checkbox-label:hover {
+  border-color: var(--primary);
+  background: var(--card);
+}
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.checkbox-label:has(input:checked) {
+  border-color: var(--primary);
+  background: rgba(108, 99, 255, 0.12);
+}
+
 /* ===== RESET & BASE ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -1198,4 +1234,87 @@ textarea { resize: vertical; }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+
+
+/* ===== UNLOCK OVERLAY ===== */
+.unlock-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 500px;
+    padding: 20px;
+}
+
+.unlock-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 48px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+
+.unlock-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.unlock-plan-card {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    margin: 16px 0;
+    text-align: center;
+}
+
+.unlock-plan-card .plan-price {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--primary);
+}
+
+.unlock-plan-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.unlock-plan-card ul li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text2);
+    font-size: 0.9rem;
+}
+
+.unlock-plan-card ul li span {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* 小字悬停效果 */
+#demoRevealBtn {
+    transition: all 0.3s ease;
+}
+
+#demoRevealBtn:hover {
+    color: var(--text);
+}
+
+@media (max-width: 600px) {
+    .unlock-card {
+        padding: 24px 16px;
+    }
+    
+    .unlock-plan-card {
+        padding: 16px;
+    }
 }

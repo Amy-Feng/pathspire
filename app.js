@@ -23,7 +23,7 @@ async function loadTeachableModel() {
     tmIsLoading = true;
     
     try {
-        updateAIStatus('loading', 'Loading emotion model...');
+        // updateAIStatus('loading', 'Loading emotion model...');
         
         const modelURL = TM_CONFIG.URL + "model.json";
         const metadataURL = TM_CONFIG.URL + "metadata.json";
@@ -36,7 +36,7 @@ async function loadTeachableModel() {
         console.log('✅ Teachable Machine model loaded!');
         console.log('📊 Detects: Confident / Nervous');
         
-        updateAIStatus('ready', 'Emotion detection ready');
+        // updateAIStatus('ready', 'Emotion detection ready');
         return true;
         
     } catch (error) {
@@ -472,7 +472,7 @@ function toggleLang() {
   if (cl) cl.textContent = t('confLabel');
   if (pl) pl.textContent = t('paceLabel');
   updateMainActionButton();
-  generateCareerTimeline();
+  initCareerTimeline();
   renderActivities();
 }
 
@@ -497,7 +497,7 @@ function saveProfile() {
   const curr = document.getElementById('userCurriculum').value;
   const major = document.getElementById('targetMajor').value.trim();
   const program = document.getElementById('targetProgram').value.trim();
-  const regions = [...document.getElementById('targetRegion').selectedOptions].map(o => o.value);
+  const regions = [...document.querySelectorAll('#regionCheckboxes input:checked')].map(cb => cb.value);
   if (!name) { toast(t('fillName'), 'error'); return; }
   if (!curr) { toast(t('fillCurriculum'), 'error'); return; }
   state.profile = { name, curriculum: curr, major, program, regions };
@@ -511,7 +511,7 @@ function saveProfile() {
   updateMainActionButton();
   switchCurriculum(curr);
   renderDashboard();
-  generateCareerTimeline();
+  initCareerTimeline();
   toast(t('profileSaved'), 'success');
 }
 
@@ -527,11 +527,9 @@ function populateProfileForm() {
   if (currInput) currInput.value = state.profile.curriculum || '';
   if (majorInput) majorInput.value = state.profile.major || '';
   if (programInput) programInput.value = state.profile.program || '';
-  if (regionInput) {
-    Array.from(regionInput.options).forEach(opt => {
-      opt.selected = (state.profile.regions || []).includes(opt.value);
-    });
-  }
+  document.querySelectorAll('#regionCheckboxes input').forEach(cb => {
+    cb.checked = (state.profile.regions || []).includes(cb.value);
+  });
 }
 
 function updateMainActionButton() {
@@ -714,7 +712,8 @@ function initGrades() {
 
   // AP
   const apEl = document.getElementById('apSubjects');
-  apEl.innerHTML = SUBJECTS.AP.slice(0, 5).map((s, i) => {
+  const defaultAPs = ['AP Calculus BC', 'AP Biology', 'AP Statistics', 'AP Psychology'];
+  apEl.innerHTML = defaultAPs.map((s, i) => {
     const id = `ap_${i}`;
     return subjectCard(id, s, false,
       `<input type="number" class="subject-input" id="${id}" min="1" max="5" placeholder="1–5" inputmode="numeric" oninput="limitAPScore(this)" onchange="onGradeChange()" />`,
@@ -1058,7 +1057,7 @@ function selectActivityEntryType(type, btn) {
   if (btn) btn.classList.add('active');
   const roleGroup = document.getElementById('actRoleGroup');
   const awardGroup = document.getElementById('actAwardGroup');
-  if (roleGroup) roleGroup.style.display = type === 'other' ? 'block' : 'none';
+  if (roleGroup) roleGroup.style.display = type === 'position' ? 'block' : 'none';
   if (awardGroup) awardGroup.style.display = type === 'award' ? 'block' : 'none';
 }
 
@@ -1075,7 +1074,7 @@ function openActivityModal(id = null) {
   document.querySelector('.entry-type-btn:nth-of-type(3)')?.classList.add('active');
   const roleGroup = document.getElementById('actRoleGroup');
   const awardGroup = document.getElementById('actAwardGroup');
-  if (roleGroup) roleGroup.style.display = 'block';
+  if (roleGroup) roleGroup.style.display = 'none';
   if (awardGroup) awardGroup.style.display = 'none';
 
   if (id) {
@@ -1091,7 +1090,7 @@ function openActivityModal(id = null) {
     document.querySelectorAll('.entry-type-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().includes(act.entryType || 'other')));
     const roleGroup = document.getElementById('actRoleGroup');
     const awardGroup = document.getElementById('actAwardGroup');
-    if (roleGroup) roleGroup.style.display = (act.entryType || 'other') === 'other' ? 'block' : 'none';
+    if (roleGroup) roleGroup.style.display = (act.entryType || 'other') === 'position' ? 'block' : 'none';
     if (awardGroup) awardGroup.style.display = (act.entryType || 'other') === 'award' ? 'block' : 'none';
   }
 }
@@ -1323,10 +1322,10 @@ const interviewState = {
     startTime: null,
     questionStartTime: null,
     reported: false,
-    // ✅ Add these missing properties
     isAnswering: false,
     userResponded: false,
-    currentAnswer: ''
+    currentAnswer: '',
+    reportRevealed: false  // ✅ 新增：报告是否已解锁
 };
 
 // Interview question bank (unchanged)
@@ -1725,27 +1724,23 @@ function displayQuestion() {
 let listeningTimeout = null;
 
 function startListeningForResponse() {
-    // Clear any existing timer
     if (listeningTimeout) clearTimeout(listeningTimeout);
     
-    // Show listening indicator
+    interviewState.userResponded = false;
     document.getElementById('listeningIndicator').style.display = 'flex';
     document.getElementById('interviewStatus').textContent = '🎤 Listening for your answer...';
     
-    // If speech recognition is active, it will capture the response
-    // If not, use a timer to move to next question after a pause
-    
-    // Set a timer to automatically move to next question after silence
-    // (speech recognition will override this)
-    listeningTimeout = setTimeout(() => {
-        // If no speech detected and user hasn't responded
-        if (!interviewState.userResponded) {
-            console.log('⏰ No response detected, moving to next question...');
-            // Show a prompt
-            toast('No response detected. Moving to next question.', 'info');
-            nextQuestion();
-        }
-    }, 15000); // 15 seconds of silence
+    // 如果语音识别不可用，用定时器模拟
+    if (!window.interviewRecognition) {
+        listeningTimeout = setTimeout(() => {
+            if (!interviewState.userResponded) {
+                // 生成一个模拟回答
+                interviewState.currentAnswer = 'I appreciate the question. Let me think about it...';
+                interviewState.userResponded = true;
+                setTimeout(() => nextQuestion(), 1000);
+            }
+        }, 8000);
+    }
 }
 
 // Speech recognition integration - capture user's verbal response
@@ -1819,62 +1814,155 @@ function startInterviewWithSpeechRecognition() {
 
 
 function nextQuestion() {
-  const { questions, qIndex, questionStartTime } = interviewState;
-  
-  const answer = prompt('Type your answer (optional):') || '';
-  if (answer) {
-    interviewState.sessionData.answers.push({
-      question: questions[qIndex],
-      answer: answer,
-      time: Math.round((Date.now() - questionStartTime) / 1000)
-    });
-  }
-  
-  if (qIndex < questions.length - 1) {
-    interviewState.qIndex++;
-    setTimeout(() => {
-      displayQuestion();
-    }, 1000);
-  } else {
-    setTimeout(() => {
-      endInterview();
-    }, 1500);
-  }
+    // 使用语音识别捕获的答案
+    const answer = interviewState.currentAnswer || '';
+    
+    if (answer) {
+        interviewState.sessionData.answers.push({
+            question: interviewState.questions[interviewState.qIndex],
+            answer: answer,
+            time: Math.round((Date.now() - interviewState.questionStartTime) / 1000)
+        });
+    }
+    
+    // 清空当前答案，准备下一题
+    interviewState.currentAnswer = '';
+    interviewState.userResponded = false;
+    
+    if (interviewState.qIndex < interviewState.questions.length - 1) {
+        interviewState.qIndex++;
+        setTimeout(() => {
+            displayQuestion();
+        }, 1000);
+    } else {
+        setTimeout(() => {
+            endInterview();
+        }, 1500);
+    }
 }
-
 function endInterview() {
-  if (!interviewState.active && interviewState.reported) return;
-  
-  interviewState.active = false;
-  interviewState.reported = true;
-  
-  if (interviewState.stream) {
-    interviewState.stream.getTracks().forEach(t => t.stop());
-    interviewState.stream = null;
-  }
-  
-  if (interviewState.tipInterval) clearInterval(interviewState.tipInterval);
-  if (interviewState.frameInterval) clearInterval(interviewState.frameInterval);
-  if (interviewState.speechRec) {
-    try { interviewState.speechRec.stop(); } catch(e) {}
-  }
-  
-  // Save interview data to cookies
-  Storage.save('pathspire_interview_data', {
-    sessionData: interviewState.sessionData,
-    questions: interviewState.questions,
-    date: new Date().toISOString()
-  });
-  Storage.saveAllState();
-  
-  showInterviewReport();
-  toast('Interview completed!', 'success');
+    if (!interviewState.active && interviewState.reported) return;
+    
+    interviewState.active = false;
+    interviewState.reported = true;
+    interviewState.reportRevealed = false;  // 重置解锁状态
+    
+    if (interviewState.stream) {
+        interviewState.stream.getTracks().forEach(t => t.stop());
+        interviewState.stream = null;
+    }
+    
+    if (interviewState.tipInterval) clearInterval(interviewState.tipInterval);
+    if (interviewState.frameInterval) cancelAnimationFrame(interviewState.frameInterval);
+    if (interviewState.speechRec) {
+        try { interviewState.speechRec.stop(); } catch(e) {}
+    }
+    
+    // 保存面试数据
+    Storage.save('pathspire_interview_data', {
+        sessionData: interviewState.sessionData,
+        questions: interviewState.questions,
+        date: new Date().toISOString()
+    });
+    // 同步到 state.interview 以便 dashboard 检测到已完成
+    state.interview.sessionData = interviewState.sessionData;
+    state.interview.questions = interviewState.questions;
+    Storage.saveAllState();
+    
+    // ✅ 显示解锁提示（而不是直接显示报告）
+    showUnlockPrompt();
+    toast('Interview completed! Unlock your report below.', 'success');
 }
 
-function showInterviewReport() {
+// ✅ 新增：显示解锁提示 + 月度套餐卡片
+function showUnlockPrompt() {
     document.getElementById('interviewCall').style.display = 'none';
     document.getElementById('interviewReport').style.display = 'block';
     
+    // ✅ 先显示解锁提示内容（覆盖报告内容）
+    const reportContainer = document.querySelector('.report-container');
+    if (!reportContainer) return;
+    
+    // 保存原始内容，稍后恢复
+    const originalHTML = reportContainer.innerHTML;
+    
+    reportContainer.innerHTML = `
+        <div class="unlock-overlay" id="unlockOverlay">
+            <div class="unlock-card">
+                <div class="unlock-icon">🔒</div>
+                <h2 style="font-size:1.8rem; font-weight:800; margin-bottom:8px;">Unlock Report Now</h2>
+                <p style="color:var(--text2); margin-bottom:24px; font-size:1rem;">
+                    Get your full interview analysis with AI-powered feedback
+                </p>
+                
+                <!-- ✅ 月度套餐卡片 -->
+                <div class="unlock-plan-card">
+                    <div class="plan-badge" style="background:rgba(108,99,255,0.2); color:var(--primary); padding:4px 14px; border-radius:100px; font-size:0.7rem; font-weight:700; display:inline-block; margin-bottom:12px;">
+                        🌟 Most Popular
+                    </div>
+                    <h3 style="font-size:1.3rem; font-weight:700;">Monthly Boost</h3>
+                    <div class="plan-price" style="font-size:2rem; font-weight:900; color:var(--primary); margin:8px 0;">
+                        $168 <span style="font-size:1rem; font-weight:400; color:var(--text3);">/ month</span>
+                    </div>
+                    <ul style="list-style:none; padding:0; margin:16px 0; text-align:left; display:flex; flex-direction:column; gap:10px;">
+                        <li style="display:flex; align-items:center; gap:10px; color:var(--text2); font-size:0.9rem;">
+                            <span style="color:var(--primary);">✓</span> AI interview practice
+                        </li>
+                        <li style="display:flex; align-items:center; gap:10px; color:var(--text2); font-size:0.9rem;">
+                            <span style="color:var(--primary);">✓</span> Personal statement drafting
+                        </li>
+                        <li style="display:flex; align-items:center; gap:10px; color:var(--text2); font-size:0.9rem;">
+                            <span style="color:var(--primary);">✓</span> University info and match suggestions
+                        </li>
+                    </ul>
+                    <button class="btn-primary" style="width:100%; padding:14px;" onclick="toast('🎉 Starter plan selected!', 'success')">
+                        Choose Starter
+                    </button>
+                </div>
+                
+                <!-- ✅ 小字：Demo Version - I'm the Developer -->
+                <div style="margin-top:20px; font-size:0.7rem; color:var(--text3); cursor:pointer; 
+                            padding:8px 16px; border-radius:8px; transition:all 0.2s; 
+                            border:1px solid transparent; user-select:none;"
+                     id="demoRevealBtn"
+                     onmouseenter="this.style.borderColor='rgba(108,99,255,0.3)'; this.style.background='rgba(108,99,255,0.05)';"
+                     onmouseleave="this.style.borderColor='transparent'; this.style.background='transparent';"
+                     onclick="revealReport()">
+                    Demo Version - I'm the Developer
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 保存原始内容以便恢复
+    reportContainer._originalHTML = originalHTML;
+}
+
+// ✅ 新增：点击小字后显示真正的报告
+function revealReport() {
+    if (interviewState.reportRevealed) return;
+    interviewState.reportRevealed = true;
+    
+    const reportContainer = document.querySelector('.report-container');
+    if (!reportContainer) return;
+    
+    // 恢复原始内容
+    if (reportContainer._originalHTML) {
+        reportContainer.innerHTML = reportContainer._originalHTML;
+    }
+    
+    // ✅ 重新生成报告内容
+    generateReportContent();
+    
+    // 添加解锁动画反馈
+    toast('🔓 Report unlocked!', 'success');
+    
+    // 更新进度
+    updateProgressChecklist();
+}
+
+// ✅ 新增：生成报告内容的函数（从原来的 showInterviewReport 中提取）
+function generateReportContent() {
     const { sessionData, questions } = interviewState;
     
     const duration = Math.round((Date.now() - (interviewState.startTime || Date.now())) / 1000);
@@ -1897,6 +1985,7 @@ function showInterviewReport() {
         (avgPace > 80 && avgPace < 160 ? 20 : 10)
     ));
     
+    // 更新报告中的各个部分
     document.getElementById('reportOverall').textContent = `${score}%`;
     document.getElementById('reportDuration').textContent = `${minutes}m ${seconds}s`;
     document.getElementById('reportQuestions').textContent = questions.length;
@@ -1922,7 +2011,7 @@ function showInterviewReport() {
         </div>
     `).join('');
     
-    // 添加 Confident/Nervous 情绪总结
+    // 情绪总结
     const emotionSummary = avgConfidence >= 65 
         ? '😎 You appeared confident throughout most of the interview. Great job!'
         : avgConfidence >= 45
@@ -1951,9 +2040,23 @@ function showInterviewReport() {
             ${answers[i] ? `<div class="q-answer">${answers[i].answer || 'No answer recorded'}</div>` : ''}
         </div>
     `).join('');
-    
-    updateProgressChecklist();
 }
+
+
+function showInterviewReport() {
+    // 如果报告已解锁，直接显示
+    if (interviewState.reportRevealed) {
+        document.getElementById('interviewCall').style.display = 'none';
+        document.getElementById('interviewReport').style.display = 'block';
+        generateReportContent();
+        return;
+    }
+    
+    // 否则显示解锁提示
+    showUnlockPrompt();
+}
+
+
 function generateReportRecommendations(anxiety, confidence, pace, score) {
   const recs = [];
   
@@ -2613,7 +2716,25 @@ SCHOOL_DATA = [
   { id:13, name:'UBC', short:'UBC', country:'Canada', region:'CA', rank:'QS #34', majors:['stem','business','arts','social','medicine'], desc:'A very popular Canadian choice for science and sustainability.', tags:['Direct admission','Vancouver','Sustainability'], benchmark:{ gpa:4.0, dse:27, stem:3.9, leadership:3.2, volunteers:3.2, awards:3.3 } },
   { id:14, name:'University of Melbourne', short:'UniMelb', country:'Australia', region:'AU', rank:'QS #13', majors:['stem','medicine','law','business','arts','social'], desc:'A globally respected university with strong results across disciplines.', tags:['UAC','Group of 8','Melbourne Model'], benchmark:{ gpa:4.1, dse:28, stem:4.0, leadership:3.4, volunteers:3.3, awards:3.5 } },
   { id:15, name:'ANU', short:'ANU', country:'Australia', region:'AU', rank:'QS #30', majors:['stem','law','social','arts','business'], desc:'A strong research university known for politics, law and public policy.', tags:['Direct','Canberra','Research'], benchmark:{ gpa:4.0, dse:27, stem:3.8, leadership:3.2, volunteers:3.2, awards:3.2 } },
-  { id:16, name:'UNSW Sydney', short:'UNSW', country:'Australia', region:'AU', rank:'QS #18', majors:['stem','business','law','medicine'], desc:'Very strong for engineering, computing and business in Sydney.', tags:['UAC','Sydney','Engineering'], benchmark:{ gpa:4.0, dse:27, stem:4.0, leadership:3.2, volunteers:3.2, awards:3.2 } }
+  { id:16, name:'UNSW Sydney', short:'UNSW', country:'Australia', region:'AU', rank:'QS #18', majors:['stem','business','law','medicine'], desc:'Very strong for engineering, computing and business in Sydney.', tags:['UAC','Sydney','Engineering'], benchmark:{ gpa:4.0, dse:27, stem:4.0, leadership:3.2, volunteers:3.2, awards:3.2 } },
+  { id:17, name:'Harvard University', short:'Harvard', country:'United States', region:'US', rank:'QS #1', majors:['stem','medicine','law','business','arts','social'], desc:'The world\'s most prestigious university with unmatched resources across all disciplines.', tags:['Ivy League','Boston','Liberal Arts'], benchmark:{ gpa:4.6, dse:35, stem:4.9, leadership:5.0, volunteers:4.5, awards:5.0 } },
+  { id:18, name:'Massachusetts Institute of Technology', short:'MIT', country:'United States', region:'US', rank:'QS #1', majors:['stem','business'], desc:'World leader in engineering, computing and physical sciences with a legendary innovation culture.', tags:['STEM Powerhouse','Boston','Research'], benchmark:{ gpa:4.7, dse:35, stem:5.0, leadership:4.5, volunteers:3.5, awards:4.8 } },
+  { id:19, name:'Stanford University', short:'Stanford', country:'United States', region:'US', rank:'QS #3', majors:['stem','business','arts','social'], desc:'Top-tier for technology, entrepreneurship and interdisciplinary studies in Silicon Valley.', tags:['Silicon Valley','Entrepreneurship','Sunshine'], benchmark:{ gpa:4.6, dse:34, stem:4.8, leadership:4.8, volunteers:4.0, awards:4.5 } },
+  { id:20, name:'Yale University', short:'Yale', country:'United States', region:'US', rank:'QS #16', majors:['arts','law','social','stem','medicine'], desc:'Renowned for law, humanities and its prestigious residential college system.', tags:['Ivy League','New Haven','Liberal Arts'], benchmark:{ gpa:4.4, dse:33, stem:4.3, leadership:4.5, volunteers:4.2, awards:4.5 } },
+  { id:21, name:'Columbia University', short:'Columbia', country:'United States', region:'US', rank:'QS #22', majors:['arts','social','stem','business','medicine'], desc:'Ivy League in the heart of New York City with exceptional journalism and research.', tags:['Ivy League','New York','Core Curriculum'], benchmark:{ gpa:4.3, dse:32, stem:4.2, leadership:4.2, volunteers:4.0, awards:4.2 } },
+  { id:22, name:'Princeton University', short:'Princeton', country:'United States', region:'US', rank:'QS #20', majors:['stem','arts','social','business'], desc:'Highly selective Ivy with outstanding mathematics, economics and public policy.', tags:['Ivy League','New Jersey','Undergraduate focus'], benchmark:{ gpa:4.4, dse:33, stem:4.5, leadership:4.3, volunteers:4.0, awards:4.3 } },
+  { id:23, name:'UC Berkeley', short:'UCB', country:'United States', region:'US', rank:'QS #10', majors:['stem','business','arts','social'], desc:'Top public university globally, famous for CS, engineering and social activism.', tags:['Public Ivy','Bay Area','Cutting-edge'], benchmark:{ gpa:4.2, dse:30, stem:4.5, leadership:4.0, volunteers:3.8, awards:4.0 } },
+  { id:24, name:'University of Pennsylvania', short:'UPenn', country:'United States', region:'US', rank:'QS #12', majors:['business','stem','medicine','arts','social'], desc:'Home to Wharton — the world\'s #1 business school — with strong pre-professional programs.', tags:['Ivy League','Philadelphia','Wharton'], benchmark:{ gpa:4.3, dse:31, stem:4.2, leadership:4.3, volunteers:3.8, awards:4.0 } },
+  { id:25, name:'Cornell University', short:'Cornell', country:'United States', region:'US', rank:'QS #21', majors:['stem','medicine','business','arts','social'], desc:'Comprehensive Ivy with leading programs in engineering, hotel admin and agriculture.', tags:['Ivy League','Ithaca','Land-grant'], benchmark:{ gpa:4.2, dse:31, stem:4.2, leadership:3.8, volunteers:3.5, awards:3.8 } },
+  { id:26, name:'UCLA', short:'UCLA', country:'United States', region:'US', rank:'QS #29', majors:['stem','arts','medicine','social','business'], desc:'Top public research university in Los Angeles with strong film, medicine and engineering.', tags:['Public Ivy','Los Angeles','Diverse'], benchmark:{ gpa:4.1, dse:29, stem:4.0, leadership:3.8, volunteers:4.0, awards:3.8 } },
+  { id:27, name:'University of Chicago', short:'UChicago', country:'United States', region:'US', rank:'QS #10', majors:['stem','social','arts','business'], desc:'Intellectually intense with Nobel-winning economics and rigorous Core curriculum.', tags:['Chicago','Research','Economics'], benchmark:{ gpa:4.3, dse:32, stem:4.3, leadership:4.2, volunteers:3.5, awards:4.3 } },
+  { id:28, name:'Johns Hopkins University', short:'JHU', country:'United States', region:'US', rank:'QS #28', majors:['medicine','stem','social','arts'], desc:'World\'s leading biomedical research university with top-tier public health and medicine.', tags:['Baltimore','Medicine','Research'], benchmark:{ gpa:4.2, dse:30, stem:4.4, leadership:3.8, volunteers:3.8, awards:4.2 } },
+  { id:29, name:'Caltech', short:'Caltech', country:'United States', region:'US', rank:'QS #14', majors:['stem'], desc:'Tiny but mighty — elite for physics, astronomy, engineering and pure sciences.', tags:['STEM Focus','Pasadena','NASA/JPL'], benchmark:{ gpa:4.5, dse:34, stem:4.9, leadership:3.5, volunteers:3.0, awards:4.5 } },
+  { id:30, name:'New York University', short:'NYU', country:'United States', region:'US', rank:'QS #39', majors:['arts','business','social','stem'], desc:'Global university in Greenwich Village with powerhouse Stern Business and Tisch Arts.', tags:['New York','Global campuses','Professional'], benchmark:{ gpa:4.0, dse:28, stem:3.8, leadership:3.5, volunteers:3.2, awards:3.5 } },
+  { id:31, name:'Carnegie Mellon University', short:'CMU', country:'United States', region:'US', rank:'QS #52', majors:['stem','business','arts','social'], desc:'A leader in computer science, robotics and AI with world-class drama and business.', tags:['Pittsburgh','CS Powerhouse','AI/ robotics'], benchmark:{ gpa:4.1, dse:29, stem:4.5, leadership:3.5, volunteers:3.2, awards:3.8 } },
+  { id:32, name:'University of Michigan', short:'UMich', country:'United States', region:'US', rank:'QS #33', majors:['stem','business','arts','medicine','social'], desc:'Top public research university with elite engineering, business and medicine programs.', tags:['Public Ivy','Ann Arbor','Big Ten'], benchmark:{ gpa:4.0, dse:28, stem:4.1, leadership:3.5, volunteers:3.5, awards:3.5 } },
+  { id:33, name:'Duke University', short:'Duke', country:'United States', region:'US', rank:'QS #50', majors:['stem','medicine','business','arts','social'], desc:'Selective Southern university with top-rated medicine, law and basketball.', tags:['Durham NC','Research','Collegiate gothic'], benchmark:{ gpa:4.1, dse:29, stem:4.0, leadership:3.8, volunteers:4.0, awards:3.8 } },
+  { id:34, name:'Northwestern University', short:'Northwestern', country:'United States', region:'US', rank:'QS #40', majors:['stem','arts','business','social','medicine'], desc:'Strong for journalism, engineering and business located by Lake Michigan.', tags:['Chicago area','Medill','Engineering'], benchmark:{ gpa:4.1, dse:29, stem:4.0, leadership:3.5, volunteers:3.5, awards:3.8 } }
 ];
 
 function getProfileBenchmark() {
@@ -2822,10 +2943,116 @@ function renderSchools(schools) {
 /* ──────────────────────────────────────────
    COLLEGE PLANNING (unchanged)
 ────────────────────────────────────────── */
-function generateCareerTimeline() {
+
+// Page-load version: resets button text and shows static content, does NOT call AI
+function initCareerTimeline() {
+  const btn = document.querySelector('.career-card .btn-primary');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = state.lang === 'zh' ? '生成時間線' : 'Generate Timeline';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.opacity = '';
+  }
+  // Show static default timeline + steps (same fallback as generateCareerTimeline)
   const profile = state.profile;
   const major = profile?.major || (state.lang === 'zh' ? '你選擇的學科' : 'your chosen field');
   const curriculum = profile?.curriculum || 'DSE';
+  const timeline = state.lang === 'zh' ? [
+    { title: '第 1 階段：建立基礎', text: `先整理 ${curriculum} 成績、活動和目標大學要求，確認自己最強的申請優勢。` },
+    { title: '第 2 階段：打磨材料', text: `完成個人陳述草稿，並把課外活動和獎項整理成更有說服力的故事。` },
+    { title: '第 3 階段：面試與表達', text: `每週至少練習一次 AI 模擬面試，提升自信與語速控制。` },
+    { title: '第 4 階段：申請提交', text: `根據 ${major} 的方向，對照每間大學的截止日期和申請流程，準備提交。` }
+  ] : [
+    { title: 'Stage 1 — Build the foundation', text: `Start by consolidating ${curriculum} grades, activities and university requirements to identify your strongest application edge.` },
+    { title: 'Stage 2 — Polish the materials', text: `Draft your personal statement and shape your activities into a compelling story that reflects ${major}.` },
+    { title: 'Stage 3 — Interview readiness', text: `Practise at least one AI mock interview per week to strengthen confidence, pacing and clarity.` },
+    { title: 'Stage 4 — Submit with confidence', text: `Track each university deadline and application checklist for ${major} so submissions stay organised.` }
+  ];
+  const timelineEl = document.getElementById('careerTimeline');
+  if (timelineEl) {
+    timelineEl.innerHTML = timeline.map(item => `
+      <div class="timeline-item">
+        <strong>${item.title}</strong>
+        <span>${item.text}</span>
+      </div>
+    `).join('');
+  }
+  const stepsEl = document.getElementById('careerSteps');
+  if (stepsEl) {
+    const steps = state.lang === 'zh' ? [
+      '完成你的個人陳述第一稿。',
+      '至少整理 5 個有影響力的活動與成就。',
+      '每週練習一次 AI 面試，提升自信與語速。',
+      '把目標大學的要求與截止日期列入清單。'
+    ] : [
+      'Finish your first personal statement draft.',
+      'List at least 5 meaningful activities and achievements.',
+      'Practise one AI mock interview each week to build confidence.',
+      'Track deadlines and application requirements for each target school.'
+    ];
+    stepsEl.innerHTML = steps.map(step => `<li>${step}</li>`).join('');
+  }
+}
+
+async function generateCareerTimeline() {
+  const btn = document.querySelector('.career-card .btn-primary');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = state.lang === 'zh' ? '🤖 AI 生成中...' : '🤖 AI Generating...';
+    btn.style.background = 'linear-gradient(135deg, #1e3a5f, #2d5a87)';
+    btn.style.borderColor = '#1e3a5f';
+    btn.style.opacity = '0.85';
+  }
+
+  const profile = state.profile;
+  const major = profile?.major || (state.lang === 'zh' ? '你選擇的學科' : 'your chosen field');
+  const curriculum = profile?.curriculum || 'DSE';
+  const regions = (profile?.regions || []).join(', ') || (state.lang === 'zh' ? '未指定' : 'Not specified');
+
+  try {
+    const result = await callAI('/api/generate_timeline', {
+      major: major,
+      curriculum: curriculum,
+      regions: regions,
+      lang: state.lang || 'en',
+      grades: state.grades?.[curriculum] || {},
+      activities: state.activities || [],
+      schools: state.schools?.slice(0, 5).map(s => s.name) || [],
+    });
+
+    if (result && result.timeline && result.timeline.length > 0) {
+      // Display AI-generated timeline in the left card
+      const timelineEl = document.getElementById('careerTimeline');
+      if (timelineEl) {
+        timelineEl.innerHTML = result.timeline.map(item => `
+          <div class="timeline-item">
+            <strong>${item.title}</strong>
+            <span>${item.text}</span>
+          </div>
+        `).join('');
+      }
+
+      // Display AI-generated next steps in the right card
+      const stepsEl = document.getElementById('careerSteps');
+      if (stepsEl && result.steps && result.steps.length > 0) {
+        stepsEl.innerHTML = result.steps.map(step => `<li>${step}</li>`).join('');
+      }
+      toast(state.lang === 'zh' ? 'AI 時間線已生成！' : 'AI timeline generated!', 'success');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = state.lang === 'zh' ? '🔄 重新生成' : '🔄 Regenerate';
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.opacity = '';
+      }
+      return;
+    }
+  } catch (error) {
+    console.error('AI timeline generation failed:', error);
+  }
+
+  // Fallback to static content
   const timeline = state.lang === 'zh' ? [
     { title: '第 1 階段：建立基礎', text: `先整理 ${curriculum} 成績、活動和目標大學要求，確認自己最強的申請優勢。` },
     { title: '第 2 階段：打磨材料', text: `完成個人陳述草稿，並把課外活動和獎項整理成更有說服力的故事。` },
@@ -2863,6 +3090,14 @@ function generateCareerTimeline() {
     ];
     stepsEl.innerHTML = steps.map(step => `<li>${step}</li>`).join('');
   }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = state.lang === 'zh' ? '生成時間線' : 'Generate Timeline';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.opacity = '';
+  }
 }
 
 /* ──────────────────────────────────────────
@@ -2881,12 +3116,9 @@ function loadPersistedData() {
         document.getElementById('userName').value = state.profile.name || '';
         document.getElementById('userCurriculum').value = state.profile.curriculum || '';
         document.getElementById('targetMajor').value = state.profile.major || '';
-        if (state.profile.regions) {
-          state.profile.regions.forEach(r => {
-            const opt = document.querySelector(`#targetRegion option[value="${r}"]`);
-            if (opt) opt.selected = true;
-          });
-        }
+        document.querySelectorAll('#regionCheckboxes input').forEach(cb => {
+          cb.checked = (state.profile.regions || []).includes(cb.value);
+        });
         document.getElementById('profileSetup').style.display = 'none';
         document.getElementById('dashboardGrid').style.display = 'grid';
         updateMainActionButton();
@@ -2915,9 +3147,8 @@ function loadPersistedData() {
       document.getElementById('userName').value = state.profile.name || '';
       document.getElementById('userCurriculum').value = state.profile.curriculum || '';
       document.getElementById('targetMajor').value = state.profile.major || '';
-      state.profile.regions.forEach(r => {
-        const opt = document.querySelector(`#targetRegion option[value="${r}"]`);
-        if (opt) opt.selected = true;
+      document.querySelectorAll('#regionCheckboxes input').forEach(cb => {
+        cb.checked = (state.profile.regions || []).includes(cb.value);
       });
       document.getElementById('profileSetup').style.display = 'none';
       document.getElementById('dashboardGrid').style.display = 'grid';
@@ -3002,7 +3233,7 @@ setTimeout(async () => {
   loadPersistedData();
   populateEstimatedGpaInput();
   updateMainActionButton();
-  generateCareerTimeline();
+  initCareerTimeline();
   renderSchools(SCHOOL_DATA.slice(0, 6).map(s => ({
     ...s, score: 72, level: 'target'
   })));
@@ -3144,6 +3375,68 @@ Generate ${data.count || 5} unique, interesting questions:`;
                     Word limit: ${data.wordLimit || 650}
                     Please write a compelling personal statement in English.`;
         
+        case '/api/generate_timeline':
+            const lang = data.lang || 'en';
+            if (lang === 'zh') {
+                return `你是一位升學規劃顧問。根據以下學生的資料，為他/她生成一份個人化的申請時間表與下一步建議。
+
+學生資料：
+- 主修／申請方向：${data.major}
+- 課程體系：${data.curriculum}
+- 目標地區：${data.regions}
+- 現有成績：${JSON.stringify(data.grades)}
+- 課外活動數量：${(data.activities || []).length}
+- 目標大學：${(data.schools || []).join(', ') || '尚未選定'}
+
+請以 JSON 格式回覆，格式如下：
+{
+  "timeline": [
+    { "title": "階段標題", "text": "階段的具體描述與行動建議" },
+    ...
+  ],
+  "steps": [
+    "第一條具體可操作的下一步建議",
+    "第二條具體可操作的下一步建議",
+    ...
+  ]
+}
+
+要求：
+- timeline 包含 4~6 個階段，涵蓋從現在到申請截止的完整週期
+- 每個階段的 text 要針對該學生的課程體系（${data.curriculum}）、主修和目標地區（${data.regions}）提供具體建議
+- steps 包含 4~6 條具體、可立即行動的 next steps
+- 請只輸出 JSON，不要有多餘的文字說明`;
+            } else {
+                return `You are a university admissions planning consultant. Generate a personalised college application timeline and suggested next steps for the following student.
+
+Student Profile:
+- Major/Field: ${data.major}
+- Curriculum: ${data.curriculum}
+- Target regions: ${data.regions}
+- Current grades: ${JSON.stringify(data.grades)}
+- Activities count: ${(data.activities || []).length}
+- Target schools: ${(data.schools || []).join(', ') || 'Not selected yet'}
+
+Reply in JSON format only, with this exact structure:
+{
+  "timeline": [
+    { "title": "Stage title", "text": "Detailed description and actionable advice for this stage" },
+    ...
+  ],
+  "steps": [
+    "First concrete next step the student should take",
+    "Second concrete next step",
+    ...
+  ]
+}
+
+Requirements:
+- timeline should have 4-6 stages covering the full cycle from now until application deadlines
+- Each stage's "text" must be specific to the student's curriculum (${data.curriculum}), major, and target regions (${data.regions})
+- steps should contain 4-6 concrete, immediately actionable next steps
+- Output ONLY valid JSON, no extra text`;
+            }
+        
         default:
             return JSON.stringify(data);
     }
@@ -3153,6 +3446,43 @@ function parseAIResponse(endpoint, response) {
     switch(endpoint) {
         case '/api/generate_ps':
             return { personal_statement: response };
+        
+        case '/api/generate_timeline':
+            try {
+                // Try to extract JSON from the response (it might be wrapped in markdown code blocks)
+                const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || response.match(/\{[\s\S]*\}/);
+                const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : response;
+                const parsed = JSON.parse(jsonStr.trim());
+                if (parsed.timeline && Array.isArray(parsed.timeline) && parsed.timeline.length > 0) {
+                    console.log(`📝 Parsed ${parsed.timeline.length} timeline stages and ${(parsed.steps || []).length} steps from AI`);
+                    return {
+                        timeline: parsed.timeline,
+                        steps: parsed.steps || [],
+                    };
+                }
+            } catch (e) {
+                console.error('Failed to parse timeline JSON, trying line-based fallback:', e);
+                // Fallback: treat lines as timeline items
+                const lines = response.split('\n').filter(l => l.trim());
+                const timeline = [];
+                const steps = [];
+                let currentTitle = '';
+                for (const line of lines) {
+                    const titleMatch = line.match(/^\d+\.\s*(.+?)(?::|$)/);
+                    if (titleMatch) {
+                        currentTitle = titleMatch[1].trim();
+                    } else if (currentTitle && line.trim().length > 20) {
+                        timeline.push({ title: currentTitle, text: line.trim() });
+                        currentTitle = '';
+                    } else if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
+                        steps.push(line.replace(/^[-*]\s*/, '').trim());
+                    }
+                }
+                if (timeline.length > 0) {
+                    return { timeline, steps };
+                }
+            }
+            return null;
         
         case '/api/generate_questions':
             // ✅ Better parsing for AI-generated questions
@@ -3326,6 +3656,17 @@ async function enhancedSchoolMatch() {
         return true;
     });
 
+    // Compute real match scores
+    let scoredSchools = filteredSchools.map(s => ({
+        ...s,
+        score: computeMatchScore(s),
+    })).map(s => ({
+        ...s,
+        level: getMatchLevelForTopSchools(s, s.score)
+    })).filter(s => matchFilter === 'all' || s.level === matchFilter)
+      .sort((a,b) => b.score - a.score);
+
+    // Try AI enhancements, but always fall back to local scoring
     try {
         const result = await callAI('/api/match_schools', {
             profile: {
@@ -3340,21 +3681,30 @@ async function enhancedSchoolMatch() {
         });
 
         if (result && result.matches) {
-            state.schools = filteredSchools.map(s => ({
-                ...s,
-                score: Math.min(98, Math.max(10, 50 + Math.random() * 40)),
-                level: Math.random() > 0.5 ? 'target' : 'reach',
-            })).sort((a,b) => b.score - a.score);
-            
+            // Use AI scores only if they exist, otherwise keep local scores
+            scoredSchools = filteredSchools.map(s => {
+                const aiMatch = result.matches.find(m => m.id === s.id);
+                return {
+                    ...s,
+                    score: aiMatch ? aiMatch.score : computeMatchScore(s),
+                    level: aiMatch ? (aiMatch.level || getMatchLevelForTopSchools(s, aiMatch.score)) : getMatchLevelForTopSchools(s, computeMatchScore(s)),
+                    aiReason: aiMatch ? aiMatch.reason : null,
+                };
+            }).filter(s => matchFilter === 'all' || s.level === matchFilter)
+              .sort((a,b) => b.score - a.score);
+
+            state.schools = scoredSchools;
             renderSchools(state.schools);
             toast('AI-powered matching complete!', 'success');
             return;
         }
     } catch (error) {
-        console.error('AI school matching failed:', error);
+        console.error('AI school matching failed, using local scoring:', error);
     }
     
-    runAIMatch();
+    state.schools = scoredSchools;
+    renderSchools(state.schools);
+    toast(t('runMatch'), 'success');
 }
 
 async function analyzeActivitiesWithAI() {
@@ -3462,7 +3812,17 @@ window.generatePS = async function() {
 };
 
 window.startInterviewSession = async function() {
+    const btn = document.querySelector('#interviewSetup .btn-primary');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '🤖 AI Generating questions...';
+        btn.style.background = 'linear-gradient(135deg, #1e3a5f, #2d5a87)';
+        btn.style.borderColor = '#1e3a5f';
+        btn.style.opacity = '0.85';
+    }
+
     const questions = await generateEnhancedInterviewQuestions();
+
     if (questions && questions.length > 0) {
         interviewState.questions = questions;
         interviewState.qIndex = 0;
@@ -3475,6 +3835,7 @@ window.startInterviewSession = async function() {
         }, 2000);
         toast('AI-generated questions ready!', 'success');
     } else {
+        // fallback: originalStartInterview handles button state internally
         originalStartInterview();
     }
 };
@@ -3488,9 +3849,9 @@ function addAIActivityAnalysis() {
     if (!container) return;
     const existing = container.querySelector('.ai-activity-btn');
     if (existing) return;
-    const btn = document.createElement('button');
-    btn.className = 'btn-secondary ai-activity-btn';
-    btn.innerHTML = '<i class="fas fa-robot"></i> Analyze with AI';
+    // const btn = document.createElement('button');
+    // btn.className = 'btn-secondary ai-activity-btn';
+    // btn.innerHTML = '<i class="fas fa-robot"></i> Analyze with AI';
     btn.onclick = analyzeActivitiesWithAI;
     container.appendChild(btn);
 }
