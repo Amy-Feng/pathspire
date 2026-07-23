@@ -7,6 +7,77 @@
 'use strict';
 
 /* ──────────────────────────────────────────
+   COOKIE UTILITIES
+────────────────────────────────────────── */
+const CookieManager = {
+  /**
+   * Set a cookie with optional expiry days
+   * @param {string} name - Cookie name
+   * @param {*} value - Value to store (will be JSON stringified)
+   * @param {number} days - Days until expiry (default: 30)
+   * @param {string} path - Cookie path (default: '/')
+   */
+  set(name, value, days = 30, path = '/') {
+    try {
+      const serialized = JSON.stringify(value);
+      const expires = new Date(Date.now() + days * 86400000).toUTCString();
+      document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(serialized)}; expires=${expires}; path=${path}; SameSite=Lax`;
+    } catch (e) {
+      console.warn('Failed to set cookie:', e);
+    }
+  },
+
+  /**
+   * Get a cookie value
+   * @param {string} name - Cookie name
+   * @returns {*} Parsed value or null if not found
+   */
+  get(name) {
+    try {
+      const cookies = document.cookie.split('; ');
+      for (const cookie of cookies) {
+        const [key, value] = cookie.split('=');
+        if (decodeURIComponent(key) === name) {
+          try {
+            return JSON.parse(decodeURIComponent(value));
+          } catch {
+            return decodeURIComponent(value);
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      console.warn('Failed to read cookie:', e);
+      return null;
+    }
+  },
+
+  /**
+   * Delete a cookie
+   * @param {string} name - Cookie name
+   * @param {string} path - Cookie path
+   */
+  delete(name, path = '/') {
+    document.cookie = `${encodeURIComponent(name)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}`;
+  },
+
+  /**
+   * Check if cookies are enabled
+   * @returns {boolean}
+   */
+  isEnabled() {
+    try {
+      document.cookie = 'test_cookie=1';
+      const enabled = document.cookie.includes('test_cookie');
+      document.cookie = 'test_cookie=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      return enabled;
+    } catch {
+      return false;
+    }
+  }
+};
+
+/* ──────────────────────────────────────────
    STATE
 ────────────────────────────────────────── */
 const state = {
@@ -34,7 +105,121 @@ const state = {
 };
 
 /* ──────────────────────────────────────────
-   TRANSLATIONS
+   COOKIE-BASED PERSISTENCE WRAPPER
+────────────────────────────────────────── */
+const Storage = {
+  /**
+   * Save data to both localStorage and cookies
+   */
+  save(key, data) {
+    try {
+      // Always save to localStorage
+      localStorage.setItem(key, JSON.stringify(data));
+      
+      // Also save to cookies (with 30-day expiry)
+      CookieManager.set(key, data, 30);
+      
+      return true;
+    } catch (e) {
+      console.warn('Failed to save data:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Load data from localStorage first, fallback to cookies
+   */
+  load(key) {
+    try {
+      // Try localStorage first
+      const localData = localStorage.getItem(key);
+      if (localData) {
+        return JSON.parse(localData);
+      }
+    } catch (e) {
+      console.warn('Failed to load from localStorage:', e);
+    }
+
+    // Fallback to cookies
+    try {
+      const cookieData = CookieManager.get(key);
+      if (cookieData) {
+        // Restore to localStorage for future use
+        try {
+          localStorage.setItem(key, JSON.stringify(cookieData));
+        } catch (e) {
+          // Ignore localStorage errors
+        }
+        return cookieData;
+      }
+    } catch (e) {
+      console.warn('Failed to load from cookies:', e);
+    }
+
+    return null;
+  },
+
+  /**
+   * Delete data from both localStorage and cookies
+   */
+  delete(key) {
+    try {
+      localStorage.removeItem(key);
+      CookieManager.delete(key);
+      return true;
+    } catch (e) {
+      console.warn('Failed to delete data:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Save all state to cookies (comprehensive backup)
+   */
+  saveAllState() {
+    const stateData = {
+      profile: state.profile,
+      grades: state.grades,
+      activities: state.activities,
+      ps: state.ps,
+      interview: {
+        sessionData: state.interview.sessionData,
+        questions: state.interview.questions
+      }
+    };
+    
+    // Save as a single backup cookie
+    CookieManager.set('pathspire_full_state', stateData, 30);
+    
+    // Also save individual pieces for compatibility
+    if (state.profile) CookieManager.set('pathspire_profile', state.profile, 30);
+    if (state.grades) CookieManager.set('pathspire_grades', state.grades, 30);
+    if (state.activities) CookieManager.set('pathspire_activities', state.activities, 30);
+    if (state.ps.generated) CookieManager.set('pathspire_ps', state.ps.generated, 30);
+  },
+
+  /**
+   * Load all state from cookies
+   */
+  loadAllState() {
+    const fullState = CookieManager.get('pathspire_full_state');
+    if (fullState) {
+      if (fullState.profile) state.profile = fullState.profile;
+      if (fullState.grades) state.grades = fullState.grades;
+      if (fullState.activities) state.activities = fullState.activities;
+      if (fullState.ps) state.ps = fullState.ps;
+      if (fullState.interview) {
+        state.interview.sessionData = fullState.interview.sessionData || { anxiety: [], confidence: [], pace: [] };
+        state.interview.questions = fullState.interview.questions || [];
+      }
+      return true;
+    }
+    return false;
+  }
+};
+
+/* ──────────────────────────────────────────
+   TRANSLATIONS (unchanged)
 ────────────────────────────────────────── */
 const T = {
   en: {
@@ -55,7 +240,9 @@ const T = {
     langBtn: '繁中',
     anxietyLabel: 'Anxiety',
     confLabel: 'Confidence',
-    paceLabel: 'Pace'
+    paceLabel: 'Pace',
+    cookieEnabled: 'Cookies enabled — your data will be saved!',
+    cookieDisabled: 'Please enable cookies for better data persistence.'
   },
   zh: {
     noActivities: '尚未添加任何活動。點擊「+ 添加活動」開始。',
@@ -75,14 +262,16 @@ const T = {
     langBtn: 'English',
     anxietyLabel: '焦慮',
     confLabel: '自信',
-    paceLabel: '語速'
+    paceLabel: '語速',
+    cookieEnabled: 'Cookie 已啟用 — 你的資料將被儲存！',
+    cookieDisabled: '請啟用 Cookie 以獲得更好的資料保存體驗。'
   }
 };
 
 function t(key) { return T[state.lang][key] || key; }
 
 /* ──────────────────────────────────────────
-   NAVIGATION
+   NAVIGATION (unchanged)
 ────────────────────────────────────────── */
 function goHome() {
   showSection('landing');
@@ -114,7 +303,6 @@ function showSection(id) {
     }
   }
 
-  // Close mobile menu
   document.getElementById('navLinks').classList.remove('open');
 }
 
@@ -134,7 +322,7 @@ function toggleMenu() {
 }
 
 /* ──────────────────────────────────────────
-   LANGUAGE TOGGLE
+   LANGUAGE TOGGLE (unchanged)
 ────────────────────────────────────────── */
 function toggleLang() {
   state.lang = state.lang === 'en' ? 'zh' : 'en';
@@ -142,7 +330,6 @@ function toggleLang() {
   document.querySelectorAll('[data-en]').forEach(el => {
     el.textContent = state.lang === 'zh' ? el.dataset.zh : el.dataset.en;
   });
-  // Update dynamic labels
   const al = document.getElementById('anxietyLabel');
   const cl = document.getElementById('confLabel');
   const pl = document.getElementById('paceLabel');
@@ -155,7 +342,7 @@ function toggleLang() {
 }
 
 /* ──────────────────────────────────────────
-   TOAST
+   TOAST (unchanged)
 ────────────────────────────────────────── */
 function toast(msg, type = 'info') {
   const c = document.getElementById('toastContainer');
@@ -168,7 +355,7 @@ function toast(msg, type = 'info') {
 }
 
 /* ──────────────────────────────────────────
-   DASHBOARD
+   DASHBOARD — UPDATED WITH COOKIE SAVING
 ────────────────────────────────────────── */
 function saveProfile() {
   const name = document.getElementById('userName').value.trim();
@@ -179,7 +366,11 @@ function saveProfile() {
   if (!name) { toast(t('fillName'), 'error'); return; }
   if (!curr) { toast(t('fillCurriculum'), 'error'); return; }
   state.profile = { name, curriculum: curr, major, program, regions };
-  localStorage.setItem('pathspire_profile', JSON.stringify(state.profile));
+  
+  // Save using Storage wrapper (localStorage + cookies)
+  Storage.save('pathspire_profile', state.profile);
+  Storage.saveAllState(); // Backup all state
+  
   document.getElementById('profileSetup').style.display = 'none';
   document.getElementById('dashboardGrid').style.display = 'grid';
   updateMainActionButton();
@@ -316,7 +507,7 @@ function updateCurriculumUI() {
 }
 
 /* ──────────────────────────────────────────
-   GRADES — DATA
+   GRADES — DATA (unchanged)
 ────────────────────────────────────────── */
 const SUBJECTS = {
   DSE: {
@@ -566,7 +757,7 @@ function saveEstimatedGpa() {
     }
   }
 
-  localStorage.setItem('pathspire_grades', JSON.stringify(state.grades));
+  Storage.save('pathspire_grades', state.grades);
   renderDashboard();
 }
 
@@ -617,14 +808,15 @@ const DSE_POINTS = { '5**': 7, '5*': 6, '5': 5, '4': 4, '3': 3, '2': 2, '1': 1, 
 const AL_POINTS = { 'A*': 6, 'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 'U': 0 };
 
 function analyzeGrades() {
-  // Find active curriculum tab
   const activeTab = document.querySelector('.curr-tab.active');
   const curr = activeTab ? activeTab.textContent.replace('HKD','D').replace('SE','SE').trim() : 'DSE';
   const currMap = { 'HKDSE': 'DSE', 'AP': 'AP', 'A-Level': 'ALEVEL', 'IB': 'IB' };
   const curriculum = currMap[curr] || curr;
   const grades = collectGrades(curriculum);
   state.grades[curriculum] = grades;
-  localStorage.setItem('pathspire_grades', JSON.stringify(state.grades));
+  
+  Storage.save('pathspire_grades', state.grades);
+  Storage.saveAllState();
 
   const box = document.getElementById('gradeAnalysis');
   box.style.display = 'block';
@@ -721,7 +913,7 @@ function ibCompetitiveness(total) {
 }
 
 /* ──────────────────────────────────────────
-   ACTIVITIES
+   ACTIVITIES — UPDATED WITH COOKIE SAVING
 ────────────────────────────────────────── */
 let editingActivityId = null;
 
@@ -790,7 +982,8 @@ function saveActivity() {
   } else {
     state.activities.push(act);
   }
-  localStorage.setItem('pathspire_activities', JSON.stringify(state.activities));
+  Storage.save('pathspire_activities', state.activities);
+  Storage.saveAllState();
   closeActivityModal();
   renderActivities();
   updateProgressChecklist();
@@ -798,7 +991,8 @@ function saveActivity() {
 }
 function deleteActivity(id) {
   state.activities = state.activities.filter(a => a.id !== id);
-  localStorage.setItem('pathspire_activities', JSON.stringify(state.activities));
+  Storage.save('pathspire_activities', state.activities);
+  Storage.saveAllState();
   renderActivities();
   updateProgressChecklist();
   toast(t('actDeleted'));
@@ -841,7 +1035,7 @@ function renderActivities(filter = 'all') {
 }
 
 /* ──────────────────────────────────────────
-   PERSONAL STATEMENT
+   PERSONAL STATEMENT — UPDATED WITH COOKIE SAVING
 ────────────────────────────────────────── */
 let psCurrentStep = 1;
 const PS_TOTAL_STEPS = 4;
@@ -878,7 +1072,8 @@ function generatePS() {
   setTimeout(() => {
     const ps = buildPersonalStatement({ story, unique, subjectWhy, academic, shortGoal, longGoal, whyUni, whyUniDesc, target, wordLimit });
     state.ps.generated = ps;
-    localStorage.setItem('pathspire_ps', ps);
+    Storage.save('pathspire_ps', ps);
+    Storage.saveAllState();
 
     const words = ps.split(/\s+/).filter(Boolean).length;
     psOutput.innerHTML = `<div style="white-space:pre-wrap;line-height:1.9">${ps}</div>`;
@@ -934,7 +1129,6 @@ function buildPersonalStatement({ story, unique, subjectWhy, academic, shortGoal
 
   let fullText = paragraphs.join('\n\n');
 
-  // Trim to approximate word limit
   const words = fullText.split(/\s+/);
   if (words.length > wordLimit) {
     fullText = words.slice(0, wordLimit).join(' ') + '…';
@@ -972,7 +1166,7 @@ function downloadPS() {
 }
 
 /* ──────────────────────────────────────────
-   INTERVIEW COACH — NEW VERSION
+   INTERVIEW COACH — UPDATED WITH COOKIE SAVING
 ────────────────────────────────────────── */
 
 // Interview state
@@ -996,7 +1190,7 @@ const interviewState = {
   reported: false
 };
 
-// Interview question bank
+// Interview question bank (unchanged)
 const INTERVIEW_QUESTIONS = {
   general: {
     easy: [
@@ -1113,7 +1307,7 @@ const INTERVIEW_QUESTIONS = {
   }
 };
 
-// Script for Dr. Path's introductions and transitions
+// Dr. Path Script (unchanged)
 const DR_PATH_SCRIPT = {
   intro: [
     "Good day! I'm Dr. Path from PATHS Admissions. Thank you for joining me today.",
@@ -1138,11 +1332,9 @@ function startInterviewSession() {
   const difficulty = document.getElementById('interviewDifficulty').value;
   const count = parseInt(document.getElementById('interviewQuestionCount').value);
   
-  // Get focus areas
   const focusCheckboxes = document.querySelectorAll('#interviewSetup input[type="checkbox"]:checked');
   const focusAreas = Array.from(focusCheckboxes).map(cb => cb.value);
   
-  // Generate questions
   const questions = generateQuestions(type, difficulty, count, focusAreas);
   
   if (questions.length === 0) {
@@ -1150,7 +1342,6 @@ function startInterviewSession() {
     return;
   }
   
-  // Initialize interview state
   interviewState.questions = questions;
   interviewState.qIndex = 0;
   interviewState.difficulty = difficulty;
@@ -1160,38 +1351,31 @@ function startInterviewSession() {
   interviewState.startTime = Date.now();
   interviewState.reported = false;
   
-  // Show call screen
   document.getElementById('interviewSetup').style.display = 'none';
   document.getElementById('interviewCall').style.display = 'block';
   document.getElementById('interviewReport').style.display = 'none';
   
-  // Start camera
   startCamera();
-// Display first question after a delay
-setTimeout(() => {
-  displayQuestion();
-}, 2000);
+  setTimeout(() => {
+    displayQuestion();
+  }, 2000);
   
   toast('Interview session started! Good luck!', 'success');
 }
 
-// Generate questions based on settings
 function generateQuestions(type, difficulty, count, focusAreas) {
   let pool = [];
   
-  // Get questions from selected type
   if (INTERVIEW_QUESTIONS[type]) {
     const level = INTERVIEW_QUESTIONS[type][difficulty] || INTERVIEW_QUESTIONS[type].medium;
     pool = [...level];
   }
   
-  // Add general questions as fallback
   if (pool.length < count) {
     const generalPool = INTERVIEW_QUESTIONS.general[difficulty] || INTERVIEW_QUESTIONS.general.medium;
     pool = [...pool, ...generalPool];
   }
   
-  // Shuffle and filter by focus areas (simple keyword matching)
   let filtered = pool;
   if (focusAreas.length > 0 && focusAreas.length < 5) {
     const keywords = {
@@ -1208,7 +1392,6 @@ function generateQuestions(type, difficulty, count, focusAreas) {
         activeKeywords.some(kw => q.toLowerCase().includes(kw))
       );
       if (filtered.length < count) {
-        // Add back some general questions to meet count
         const remaining = pool.filter(q => !filtered.includes(q));
         const shuffled = remaining.sort(() => Math.random() - 0.5);
         filtered = [...filtered, ...shuffled];
@@ -1216,12 +1399,10 @@ function generateQuestions(type, difficulty, count, focusAreas) {
     }
   }
   
-  // Shuffle and limit
   const shuffled = filtered.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 
-// Start camera
 async function startCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -1239,11 +1420,9 @@ async function startCamera() {
     document.getElementById('expressionBadges').classList.add('show');
     document.getElementById('realtimeTips').style.display = 'block';
     
-    // Update user name
     const userName = state.profile?.name || 'You';
     document.getElementById('userNameDisplay').textContent = userName;
     
-    // Start analysis
     startExpressionAnalysis(video);
     startSpeechRecognition();
     startCoachingTips();
@@ -1254,7 +1433,6 @@ async function startCamera() {
   }
 }
 
-// Display question
 function displayQuestion() {
   const { questions, qIndex } = interviewState;
   if (!questions.length || qIndex >= questions.length) {
@@ -1272,22 +1450,9 @@ function displayQuestion() {
   interviewState.questionStartTime = Date.now();
 }
 
-// // Display Dr. Path message
-// function displayDrPathMessage(message) {
-//   document.getElementById('qText').textContent = message;
-//   document.getElementById('qProgress').textContent = 'Dr. Path is speaking...';
-//   document.getElementById('speakingIndicator').classList.add('active');
-  
-//   setTimeout(() => {
-//     document.getElementById('speakingIndicator').classList.remove('active');
-//   }, Math.min(3000, message.length * 80));
-// }
-
-// Next question
 function nextQuestion() {
   const { questions, qIndex, questionStartTime } = interviewState;
   
-  // Record answer
   const answer = prompt('Type your answer (optional):') || '';
   if (answer) {
     interviewState.sessionData.answers.push({
@@ -1299,20 +1464,16 @@ function nextQuestion() {
   
   if (qIndex < questions.length - 1) {
     interviewState.qIndex++;
-    
-// Move to next question
-setTimeout(() => {
-  displayQuestion();
-}, 1000);
+    setTimeout(() => {
+      displayQuestion();
+    }, 1000);
   } else {
-    // All questions done - end interview
-setTimeout(() => {
-  endInterview();
-}, 1500);
+    setTimeout(() => {
+      endInterview();
+    }, 1500);
   }
 }
 
-// End interview
 function endInterview() {
   if (!interviewState.active && interviewState.reported) return;
   
@@ -1330,19 +1491,24 @@ function endInterview() {
     try { interviewState.speechRec.stop(); } catch(e) {}
   }
   
-  // Show report
+  // Save interview data to cookies
+  Storage.save('pathspire_interview_data', {
+    sessionData: interviewState.sessionData,
+    questions: interviewState.questions,
+    date: new Date().toISOString()
+  });
+  Storage.saveAllState();
+  
   showInterviewReport();
   toast('Interview completed!', 'success');
 }
 
-// Show interview report
 function showInterviewReport() {
   document.getElementById('interviewCall').style.display = 'none';
   document.getElementById('interviewReport').style.display = 'block';
   
   const { sessionData, questions, questionStartTime } = interviewState;
   
-  // Calculate stats
   const duration = Math.round((Date.now() - (interviewState.startTime || Date.now())) / 1000);
   const minutes = Math.floor(duration / 60);
   const seconds = duration % 60;
@@ -1357,14 +1523,12 @@ function showInterviewReport() {
     ? Math.round(sessionData.pace.reduce((a, b) => a + b, 0) / sessionData.pace.length)
     : 120;
   
-  // Overall score (combination of confidence and pace)
   const score = Math.min(100, Math.round(
     (avgConfidence * 0.5) + 
     (100 - Math.min(avgAnxiety, 100) * 0.3) + 
     (avgPace > 80 && avgPace < 160 ? 20 : 10)
   ));
   
-  // Update report
   document.getElementById('reportOverall').textContent = `${score}%`;
   document.getElementById('reportDuration').textContent = `${minutes}m ${seconds}s`;
   document.getElementById('reportQuestions').textContent = questions.length;
@@ -1372,7 +1536,6 @@ function showInterviewReport() {
     avgConfidence >= 70 ? '😊 High' :
     avgConfidence >= 50 ? '😐 Moderate' : '😟 Needs Practice';
   
-  // Breakdown
   const breakdownData = [
     { label: 'Confidence', value: Math.min(100, avgConfidence + 20) },
     { label: 'Pacing', value: Math.min(100, avgPace > 80 && avgPace < 160 ? 90 : 60) },
@@ -1390,7 +1553,6 @@ function showInterviewReport() {
     </div>
   `).join('');
   
-  // Recommendations
   const recommendations = generateReportRecommendations(avgAnxiety, avgConfidence, avgPace, score);
   document.getElementById('reportRecommendations').innerHTML = recommendations.map(rec => `
     <div class="recommendation-item">
@@ -1399,7 +1561,6 @@ function showInterviewReport() {
     </div>
   `).join('');
   
-  // Question review
   const answers = interviewState.sessionData.answers || [];
   document.getElementById('reportQuestionsReview').innerHTML = questions.map((q, i) => `
     <div class="question-review-item">
@@ -1411,7 +1572,6 @@ function showInterviewReport() {
   updateProgressChecklist();
 }
 
-// Generate report recommendations
 function generateReportRecommendations(anxiety, confidence, pace, score) {
   const recs = [];
   
@@ -1465,23 +1625,19 @@ function generateReportRecommendations(anxiety, confidence, pace, score) {
   return recs;
 }
 
-// Reset interview
 function resetInterview() {
   document.getElementById('interviewReport').style.display = 'none';
   document.getElementById('interviewSetup').style.display = 'block';
   document.getElementById('interviewCall').style.display = 'none';
   
-  // Reset state
   interviewState.active = false;
   interviewState.reported = false;
   
-  // Reset camera display
   document.getElementById('camOverlay').style.display = 'flex';
   document.getElementById('expressionBadges').classList.remove('show');
   document.getElementById('realtimeTips').style.display = 'none';
 }
 
-// Toggle microphone
 function toggleMic() {
   if (!interviewState.stream) return;
   const audioTrack = interviewState.stream.getAudioTracks()[0];
@@ -1495,7 +1651,6 @@ function toggleMic() {
   btn.classList.toggle('muted', !audioTrack.enabled);
 }
 
-// Toggle camera
 function toggleCamera() {
   if (!interviewState.stream) return;
   const videoTrack = interviewState.stream.getVideoTracks()[0];
@@ -1514,7 +1669,6 @@ function toggleCamera() {
   }
 }
 
-// Speech recognition
 function startSpeechRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRec) {
@@ -1557,7 +1711,6 @@ function startSpeechRecognition() {
   try { rec.start(); } catch(e) { simulatePace(); }
 }
 
-// Simulate pace
 function simulatePace() {
   const paceInterval = setInterval(() => {
     if (!interviewState.active) { clearInterval(paceInterval); return; }
@@ -1568,7 +1721,6 @@ function simulatePace() {
   }, 3000);
 }
 
-// Expression analysis
 function startExpressionAnalysis(video) {
   const canvas = document.getElementById('expressionCanvas');
   const ctx = canvas.getContext('2d');
@@ -1583,7 +1735,6 @@ function startExpressionAnalysis(video) {
     canvas.height = video.videoHeight || 360;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Simulate improvement over time
     const elapsed = (Date.now() - (interviewState.startTime || Date.now())) / 1000;
     const improvement = Math.min(elapsed / 120, 1) * 15;
     
@@ -1609,7 +1760,6 @@ function levelLabel(score) {
   return 'Low';
 }
 
-// Coaching tips
 function startCoachingTips() {
   const tips = document.getElementById('tipText');
   const showTip = () => {
@@ -1650,8 +1800,9 @@ function startCoachingTips() {
   showTip();
   interviewState.tipInterval = setInterval(showTip, 5000);
 }
+
 /* ──────────────────────────────────────────
-   SCHOOLS
+   SCHOOLS (unchanged)
 ────────────────────────────────────────── */
 let SCHOOL_DATA = [];
 SCHOOL_DATA = [
@@ -1660,7 +1811,7 @@ SCHOOL_DATA = [
   { id:3, name:'Chinese University of Hong Kong', short:'CUHK', country:'Hong Kong', region:'HK', rank:'QS #50', majors:['stem','medicine','business','arts','social'], desc:'Balanced and comprehensive with strong medicine, business and humanities offerings.', tags:['JUPAS','Bilingual','Medical School'], benchmark:{ gpa:4.0, dse:27, stem:4.0, leadership:3.2, volunteers:3.5, awards:3.5 } },
   { id:4, name:'City University of Hong Kong', short:'CityU', country:'Hong Kong', region:'HK', rank:'QS #62', majors:['stem','business','law','arts'], desc:'Professional and career-focused with strong industry links.', tags:['JUPAS','Professional focus'], benchmark:{ gpa:3.8, dse:24, stem:3.8, leadership:2.8, volunteers:3.0, awards:3.0 } },
   { id:5, name:'HK Baptist University', short:'HKBU', country:'Hong Kong', region:'HK', rank:'QS #301', majors:['arts','social','business'], desc:'Known for strong arts, media, and communication programmes.', tags:['JUPAS','Arts & Comm'], benchmark:{ gpa:3.5, dse:22, stem:3.0, leadership:2.5, volunteers:3.0, awards:2.8 } },
-  { id:6, name:'University of Oxford', short:'Oxford', country:'United Kingdom', region:'UK', rank:'QS #3', majors:['stem','medicine','law','arts','social'], desc:'One of the world’s most selective universities with outstanding academic reputation.', tags:['UCAS','Tutorial system','Research'], benchmark:{ gpa:4.5, dse:34, stem:4.8, leadership:4.5, volunteers:4.0, awards:4.5 } },
+  { id:6, name:'University of Oxford', short:'Oxford', country:'United Kingdom', region:'UK', rank:'QS #3', majors:['stem','medicine','law','arts','social'], desc:'One of the world\'s most selective universities with outstanding academic reputation.', tags:['UCAS','Tutorial system','Research'], benchmark:{ gpa:4.5, dse:34, stem:4.8, leadership:4.5, volunteers:4.0, awards:4.5 } },
   { id:7, name:'University of Cambridge', short:'Cambridge', country:'United Kingdom', region:'UK', rank:'QS #2', majors:['stem','medicine','law','arts','social'], desc:'Renowned for mathematics, sciences and elite humanities teaching.', tags:['UCAS','College system','Nobel laureates'], benchmark:{ gpa:4.5, dse:34, stem:4.8, leadership:4.5, volunteers:4.0, awards:4.5 } },
   { id:8, name:'Imperial College London', short:'Imperial', country:'United Kingdom', region:'UK', rank:'QS #8', majors:['stem','medicine','business'], desc:'Excellent for engineering, medicine and science with a strong STEM focus.', tags:['UCAS','STEM focus','London'], benchmark:{ gpa:4.3, dse:31, stem:4.6, leadership:3.8, volunteers:3.5, awards:3.8 } },
   { id:9, name:'UCL', short:'UCL', country:'United Kingdom', region:'UK', rank:'QS #9', majors:['stem','medicine','law','arts','social'], desc:'Highly ranked and multidisciplinary with global research strength.', tags:['UCAS','London','Multidisciplinary'], benchmark:{ gpa:4.2, dse:30, stem:4.3, leadership:3.8, volunteers:3.5, awards:3.8 } },
@@ -1749,7 +1900,6 @@ function getMatchLevel(score) {
 }
 
 function getMatchLevelForTopSchools(school, score) {
-  // Prestige adjustment for top schools
   const topReach = ['Oxford','Cambridge','MIT','Harvard','Stanford','HKU'];
   const midTarget = ['Imperial','UCL','Berkeley','UofT','HKUST','CUHK','McGill','UniMelb'];
   if (topReach.includes(school.short)) return score >= 80 ? 'target' : 'reach';
@@ -1768,7 +1918,6 @@ function runAIMatch() {
     return true;
   });
 
-  // Compute scores
   state.schools = schools.map(s => ({
     ...s,
     score: computeMatchScore(s),
@@ -1879,7 +2028,7 @@ function renderSchools(schools) {
 }
 
 /* ──────────────────────────────────────────
-   COLLEGE PLANNING
+   COLLEGE PLANNING (unchanged)
 ────────────────────────────────────────── */
 function generateCareerTimeline() {
   const profile = state.profile;
@@ -1925,14 +2074,52 @@ function generateCareerTimeline() {
 }
 
 /* ──────────────────────────────────────────
-   PERSISTENCE — LOAD FROM LOCALSTORAGE
+   PERSISTENCE — LOAD FROM LOCALSTORAGE + COOKIES
 ────────────────────────────────────────── */
 function loadPersistedData() {
   try {
-    const profile = localStorage.getItem('pathspire_profile');
+    // Try to load full state from cookie backup first
+    const fullStateLoaded = Storage.loadAllState();
+    
+    if (fullStateLoaded) {
+      console.log('Loaded full state from cookies');
+      // Populate UI from state
+      populateProfileForm();
+      if (state.profile) {
+        document.getElementById('userName').value = state.profile.name || '';
+        document.getElementById('userCurriculum').value = state.profile.curriculum || '';
+        document.getElementById('targetMajor').value = state.profile.major || '';
+        if (state.profile.regions) {
+          state.profile.regions.forEach(r => {
+            const opt = document.querySelector(`#targetRegion option[value="${r}"]`);
+            if (opt) opt.selected = true;
+          });
+        }
+        document.getElementById('profileSetup').style.display = 'none';
+        document.getElementById('dashboardGrid').style.display = 'grid';
+        updateMainActionButton();
+        switchCurriculum(state.profile.curriculum);
+        renderDashboard();
+      }
+      if (state.grades) {
+        populateEstimatedGpaInput();
+      }
+      if (state.activities) {
+        renderActivities();
+      }
+      if (state.ps.generated) {
+        const words = state.ps.generated.split(/\s+/).filter(Boolean).length;
+        document.getElementById('psOutput').innerHTML = `<div style="white-space:pre-wrap;line-height:1.9">${state.ps.generated}</div>`;
+        document.getElementById('psWordCount').textContent = `${words} words`;
+      }
+      return;
+    }
+
+    // Fallback to individual localStorage + cookie loading
+    const profile = Storage.load('pathspire_profile');
     if (profile) {
-      state.profile = JSON.parse(profile);
-      // Re-populate form
+      state.profile = profile;
+      populateProfileForm();
       document.getElementById('userName').value = state.profile.name || '';
       document.getElementById('userCurriculum').value = state.profile.curriculum || '';
       document.getElementById('targetMajor').value = state.profile.major || '';
@@ -1940,39 +2127,70 @@ function loadPersistedData() {
         const opt = document.querySelector(`#targetRegion option[value="${r}"]`);
         if (opt) opt.selected = true;
       });
-      populateProfileForm();
       document.getElementById('profileSetup').style.display = 'none';
       document.getElementById('dashboardGrid').style.display = 'grid';
       updateMainActionButton();
       switchCurriculum(state.profile.curriculum);
       renderDashboard();
     }
-    const grades = localStorage.getItem('pathspire_grades');
+
+    const grades = Storage.load('pathspire_grades');
     if (grades) {
-      state.grades = JSON.parse(grades);
+      state.grades = grades;
       if (state.grades.gpa == null) state.grades.gpa = null;
+      populateEstimatedGpaInput();
     }
-    populateEstimatedGpaInput();
 
-    const activities = localStorage.getItem('pathspire_activities');
-    if (activities) { state.activities = JSON.parse(activities); renderActivities(); }
+    const activities = Storage.load('pathspire_activities');
+    if (activities) { 
+      state.activities = activities; 
+      renderActivities(); 
+    }
 
-    const ps = localStorage.getItem('pathspire_ps');
+    const ps = Storage.load('pathspire_ps');
     if (ps) {
       state.ps.generated = ps;
       const words = ps.split(/\s+/).filter(Boolean).length;
       document.getElementById('psOutput').innerHTML = `<div style="white-space:pre-wrap;line-height:1.9">${ps}</div>`;
       document.getElementById('psWordCount').textContent = `${words} words`;
     }
+
+    const interviewData = Storage.load('pathspire_interview_data');
+    if (interviewData) {
+      if (interviewData.sessionData) {
+        state.interview.sessionData = interviewData.sessionData;
+      }
+    }
+
   } catch(e) {
     console.warn('Could not load persisted data:', e);
   }
 }
 
 /* ──────────────────────────────────────────
+   COOKIE STATUS CHECK
+────────────────────────────────────────── */
+function checkCookieStatus() {
+  const enabled = CookieManager.isEnabled();
+  if (enabled) {
+    console.log('Cookies are enabled — data will be persisted across sessions');
+    // Optionally show a toast
+    // toast(t('cookieEnabled'), 'success');
+  } else {
+    console.warn('Cookies are disabled — data will only be saved in localStorage');
+    // toast(t('cookieDisabled'), 'warning');
+  }
+  return enabled;
+}
+
+/* ──────────────────────────────────────────
    INIT
 ────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  // Check cookie status
+  checkCookieStatus();
+  
+  // Initialize all modules
   initGrades();
   loadQuestions('general', null);
   loadPersistedData();
@@ -1982,6 +2200,24 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSchools(SCHOOL_DATA.slice(0, 6).map(s => ({
     ...s, score: 72, level: 'target'
   })));
-  // Init PS step nav buttons visibility
   goPSStep(1);
+  
+  // Save state to cookies periodically (every 30 seconds)
+  setInterval(() => {
+    if (state.profile || state.activities.length > 0 || state.ps.generated) {
+      Storage.saveAllState();
+    }
+  }, 30000);
+  
+  // Also save when page is about to close
+  window.addEventListener('beforeunload', () => {
+    Storage.saveAllState();
+  });
 });
+
+// Load questions (needed for interview)
+function loadQuestions(type, el) {
+  // This function is used for the interview question loading
+  // The actual question loading happens in the interview setup
+  console.log('Interview questions loaded for type:', type);
+}
