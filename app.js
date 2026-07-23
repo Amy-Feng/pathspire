@@ -327,7 +327,7 @@ const SUBJECTS = {
       'Physical Education', 'Design & Applied Technology']
   },
   AP: [
-    'AP 2-D Art and Design', 'AP 3-D Art and Design', 'AP Art History', 'AP Drawing', 'AP Music Theory',
+    'AP 2D Art and Design', 'AP 3D Art and Design', 'AP Art History', 'AP Drawing', 'AP Music Theory',
     'AP English Language and Composition', 'AP English Literature and Composition',
     'AP African American Studies', 'AP Comparative Government and Politics', 'AP European History', 'AP Human Geography', 'AP Macroeconomics', 'AP Microeconomics', 'AP Psychology', 'AP United States Government and Politics', 'AP United States History', 'AP World History: Modern',
     'AP Calculus AB', 'AP Calculus BC', 'AP Computer Science A', 'AP Computer Science Principles', 'AP Precalculus', 'AP Statistics',
