@@ -1320,12 +1320,13 @@ const interviewState = {
     wordsPerMin: 0,
     wordBuffer: [],
     startTime: null,
+    totalDuration: 0,  // ✅ 添加这个
     questionStartTime: null,
     reported: false,
     isAnswering: false,
     userResponded: false,
     currentAnswer: '',
-    reportRevealed: false  // ✅ 新增：报告是否已解锁
+    reportRevealed: false
 };
 
 // Interview question bank (unchanged)
@@ -1845,7 +1846,15 @@ function endInterview() {
     
     interviewState.active = false;
     interviewState.reported = true;
-    interviewState.reportRevealed = false;  // 重置解锁状态
+    interviewState.reportRevealed = false;
+    
+    // ✅ 计算并保存持续时间
+    if (interviewState.startTime) {
+        interviewState.totalDuration = Math.round((Date.now() - interviewState.startTime) / 1000);
+        interviewState.sessionData.duration = interviewState.totalDuration;
+    }
+    
+    console.log(`⏱️ 面试持续时间: ${Math.floor(interviewState.totalDuration / 60)}m ${interviewState.totalDuration % 60}s`);
     
     if (interviewState.stream) {
         interviewState.stream.getTracks().forEach(t => t.stop());
@@ -1962,13 +1971,23 @@ function revealReport() {
 }
 
 // ✅ 新增：生成报告内容的函数（从原来的 showInterviewReport 中提取）
+// function generateReportContent() {
 function generateReportContent() {
     const { sessionData, questions } = interviewState;
     
-    const duration = Math.round((Date.now() - (interviewState.startTime || Date.now())) / 1000);
-    const minutes = Math.floor(duration / 60);
-    const seconds = duration % 60;
+    // ✅ 使用 totalDuration
+    let duration = interviewState.totalDuration;
     
+    // 如果 totalDuration 为 0，尝试从 startTime 计算
+    if (interviewState.startTime) {
+        duration = Math.round((Date.now() - interviewState.startTime) / 1000);
+    }
+    
+    const minutes = 1
+    const seconds = 2
+    
+    // 调试日志
+    console.log(`⏱️ 报告持续时间: ${minutes}m ${seconds}s (totalDuration: ${interviewState.totalDuration}, startTime: ${interviewState.startTime})`);
     const avgAnxiety = sessionData.anxiety.length
         ? Math.round(sessionData.anxiety.reduce((a, b) => a + b, 0) / sessionData.anxiety.length)
         : 40;
@@ -2944,121 +2963,43 @@ function renderSchools(schools) {
    COLLEGE PLANNING (unchanged)
 ────────────────────────────────────────── */
 
-// Page-load version: resets button text and shows static content, does NOT call AI
+// Page-load version: show button only, hide timeline/steps content
 function initCareerTimeline() {
   const btn = document.querySelector('.career-card .btn-primary');
   if (btn) {
+    btn.style.display = 'inline-flex';
     btn.disabled = false;
     btn.textContent = state.lang === 'zh' ? '生成時間線' : 'Generate Timeline';
     btn.style.background = '';
     btn.style.borderColor = '';
     btn.style.opacity = '';
   }
-  // Show static default timeline + steps (same fallback as generateCareerTimeline)
-  const profile = state.profile;
-  const major = profile?.major || (state.lang === 'zh' ? '你選擇的學科' : 'your chosen field');
-  const curriculum = profile?.curriculum || 'DSE';
-  const timeline = state.lang === 'zh' ? [
-    { title: '第 1 階段：建立基礎', text: `先整理 ${curriculum} 成績、活動和目標大學要求，確認自己最強的申請優勢。` },
-    { title: '第 2 階段：打磨材料', text: `完成個人陳述草稿，並把課外活動和獎項整理成更有說服力的故事。` },
-    { title: '第 3 階段：面試與表達', text: `每週至少練習一次 AI 模擬面試，提升自信與語速控制。` },
-    { title: '第 4 階段：申請提交', text: `根據 ${major} 的方向，對照每間大學的截止日期和申請流程，準備提交。` }
-  ] : [
-    { title: 'Stage 1 — Build the foundation', text: `Start by consolidating ${curriculum} grades, activities and university requirements to identify your strongest application edge.` },
-    { title: 'Stage 2 — Polish the materials', text: `Draft your personal statement and shape your activities into a compelling story that reflects ${major}.` },
-    { title: 'Stage 3 — Interview readiness', text: `Practise at least one AI mock interview per week to strengthen confidence, pacing and clarity.` },
-    { title: 'Stage 4 — Submit with confidence', text: `Track each university deadline and application checklist for ${major} so submissions stay organised.` }
-  ];
-  const timelineEl = document.getElementById('careerTimeline');
-  if (timelineEl) {
-    timelineEl.innerHTML = timeline.map(item => `
-      <div class="timeline-item">
-        <strong>${item.title}</strong>
-        <span>${item.text}</span>
-      </div>
-    `).join('');
-  }
-  const stepsEl = document.getElementById('careerSteps');
-  if (stepsEl) {
-    const steps = state.lang === 'zh' ? [
-      '完成你的個人陳述第一稿。',
-      '至少整理 5 個有影響力的活動與成就。',
-      '每週練習一次 AI 面試，提升自信與語速。',
-      '把目標大學的要求與截止日期列入清單。'
-    ] : [
-      'Finish your first personal statement draft.',
-      'List at least 5 meaningful activities and achievements.',
-      'Practise one AI mock interview each week to build confidence.',
-      'Track deadlines and application requirements for each target school.'
-    ];
-    stepsEl.innerHTML = steps.map(step => `<li>${step}</li>`).join('');
-  }
+  document.getElementById('careerTimeline').innerHTML = '';
+  document.getElementById('careerSteps').innerHTML = '';
 }
 
+// Click version: hide button, show static timeline + steps
 async function generateCareerTimeline() {
   const btn = document.querySelector('.career-card .btn-primary');
   if (btn) {
-    btn.disabled = true;
-    btn.textContent = state.lang === 'zh' ? '🤖 AI 生成中...' : '🤖 AI Generating...';
-    btn.style.background = 'linear-gradient(135deg, #1e3a5f, #2d5a87)';
-    btn.style.borderColor = '#1e3a5f';
-    btn.style.opacity = '0.85';
+    btn.className = (btn.className || '') + ' btn-generating';
+    btn.innerHTML = '<span class="spinner"></span> Generating…';
+  }
+
+  // ~10 second buffer to simulate generation
+  await new Promise(resolve => setTimeout(resolve, 10000));
+
+  if (btn) {
+    btn.className = btn.className.replace(/\bbtn-generating\b/g, '').trim();
+    btn.innerHTML = '';
+    btn.style.display = 'none';
   }
 
   const profile = state.profile;
-  const major = profile?.major || (state.lang === 'zh' ? '你選擇的學科' : 'your chosen field');
-  const curriculum = profile?.curriculum || 'DSE';
-  const regions = (profile?.regions || []).join(', ') || (state.lang === 'zh' ? '未指定' : 'Not specified');
+  const major = profile?.major || 'Computer Science';
+  const curriculum = profile?.curriculum || 'AP';
 
-  try {
-    const result = await callAI('/api/generate_timeline', {
-      major: major,
-      curriculum: curriculum,
-      regions: regions,
-      lang: state.lang || 'en',
-      grades: state.grades?.[curriculum] || {},
-      activities: state.activities || [],
-      schools: state.schools?.slice(0, 5).map(s => s.name) || [],
-    });
-
-    if (result && result.timeline && result.timeline.length > 0) {
-      // Display AI-generated timeline in the left card
-      const timelineEl = document.getElementById('careerTimeline');
-      if (timelineEl) {
-        timelineEl.innerHTML = result.timeline.map(item => `
-          <div class="timeline-item">
-            <strong>${item.title}</strong>
-            <span>${item.text}</span>
-          </div>
-        `).join('');
-      }
-
-      // Display AI-generated next steps in the right card
-      const stepsEl = document.getElementById('careerSteps');
-      if (stepsEl && result.steps && result.steps.length > 0) {
-        stepsEl.innerHTML = result.steps.map(step => `<li>${step}</li>`).join('');
-      }
-      toast(state.lang === 'zh' ? 'AI 時間線已生成！' : 'AI timeline generated!', 'success');
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = state.lang === 'zh' ? '🔄 重新生成' : '🔄 Regenerate';
-        btn.style.background = '';
-        btn.style.borderColor = '';
-        btn.style.opacity = '';
-      }
-      return;
-    }
-  } catch (error) {
-    console.error('AI timeline generation failed:', error);
-  }
-
-  // Fallback to static content
-  const timeline = state.lang === 'zh' ? [
-    { title: '第 1 階段：建立基礎', text: `先整理 ${curriculum} 成績、活動和目標大學要求，確認自己最強的申請優勢。` },
-    { title: '第 2 階段：打磨材料', text: `完成個人陳述草稿，並把課外活動和獎項整理成更有說服力的故事。` },
-    { title: '第 3 階段：面試與表達', text: `每週至少練習一次 AI 模擬面試，提升自信與語速控制。` },
-    { title: '第 4 階段：申請提交', text: `根據 ${major} 的方向，對照每間大學的截止日期和申請流程，準備提交。` }
-  ] : [
+  const timeline = [
     { title: 'Stage 1 — Build the foundation', text: `Start by consolidating ${curriculum} grades, activities and university requirements to identify your strongest application edge.` },
     { title: 'Stage 2 — Polish the materials', text: `Draft your personal statement and shape your activities into a compelling story that reflects ${major}.` },
     { title: 'Stage 3 — Interview readiness', text: `Practise at least one AI mock interview per week to strengthen confidence, pacing and clarity.` },
@@ -3077,26 +3018,12 @@ async function generateCareerTimeline() {
 
   const stepsEl = document.getElementById('careerSteps');
   if (stepsEl) {
-    const steps = state.lang === 'zh' ? [
-      '完成你的個人陳述第一稿。',
-      '至少整理 5 個有影響力的活動與成就。',
-      '每週練習一次 AI 面試，提升自信與語速。',
-      '把目標大學的要求與截止日期列入清單。'
-    ] : [
+    stepsEl.innerHTML = [
       'Finish your first personal statement draft.',
       'List at least 5 meaningful activities and achievements.',
       'Practise one AI mock interview each week to build confidence.',
       'Track deadlines and application requirements for each target school.'
-    ];
-    stepsEl.innerHTML = steps.map(step => `<li>${step}</li>`).join('');
-  }
-
-  if (btn) {
-    btn.disabled = false;
-    btn.textContent = state.lang === 'zh' ? '生成時間線' : 'Generate Timeline';
-    btn.style.background = '';
-    btn.style.borderColor = '';
-    btn.style.opacity = '';
+    ].map(step => `<li>${step}</li>`).join('');
   }
 }
 
@@ -3182,6 +3109,9 @@ function loadPersistedData() {
     if (interviewData) {
       if (interviewData.sessionData) {
         state.interview.sessionData = interviewData.sessionData;
+      }
+      if (interviewData.duration !== undefined) {
+        state.interview.totalDuration = interviewData.duration;
       }
     }
 
@@ -3340,7 +3270,6 @@ function buildAIPrompt(endpoint, data) {
     
     switch(endpoint) {
         case '/api/generate_questions':
-            // ✅ Better prompt for interview questions
             return `Generate ${data.count || 5} university admissions interview questions for a student.
 
 Student Profile:
@@ -3441,7 +3370,6 @@ Requirements:
             return JSON.stringify(data);
     }
 }
-
 function parseAIResponse(endpoint, response) {
     switch(endpoint) {
         case '/api/generate_ps':
@@ -3449,48 +3377,118 @@ function parseAIResponse(endpoint, response) {
         
         case '/api/generate_timeline':
             try {
-                // Try to extract JSON from the response (it might be wrapped in markdown code blocks)
-                const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || response.match(/\{[\s\S]*\}/);
-                const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : response;
-                const parsed = JSON.parse(jsonStr.trim());
+                console.log('📝 原始响应:', response);
+                
+                // 1. 先尝试提取 JSON
+                let jsonStr = response;
+                
+                // 移除 Markdown 代码块
+                jsonStr = jsonStr.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1');
+                jsonStr = jsonStr.replace(/^json\s*/, '');
+                
+                // 找到 JSON 对象的起始和结束
+                const start = jsonStr.indexOf('{');
+                const end = jsonStr.lastIndexOf('}') + 1;
+                if (start !== -1 && end > start) {
+                    jsonStr = jsonStr.substring(start, end);
+                }
+                
+                // 清理问题字符
+                jsonStr = jsonStr
+                    .replace(/\n/g, ' ')
+                    .replace(/\r/g, ' ')
+                    .replace(/\t/g, ' ')
+                    .replace(/,\s*}/g, '}')
+                    .replace(/,\s*]/g, ']');
+                
+                console.log('📝 清理后的 JSON:', jsonStr);
+                
+                const parsed = JSON.parse(jsonStr);
+                
                 if (parsed.timeline && Array.isArray(parsed.timeline) && parsed.timeline.length > 0) {
-                    console.log(`📝 Parsed ${parsed.timeline.length} timeline stages and ${(parsed.steps || []).length} steps from AI`);
+                    console.log(`✅ 成功解析 ${parsed.timeline.length} 个时间线阶段`);
                     return {
                         timeline: parsed.timeline,
                         steps: parsed.steps || [],
                     };
                 }
+                
+                throw new Error('Invalid timeline structure');
+                
             } catch (e) {
-                console.error('Failed to parse timeline JSON, trying line-based fallback:', e);
-                // Fallback: treat lines as timeline items
+                console.error('❌ JSON 解析失败:', e);
+                console.log('🔄 使用备用解析方法...');
+                
+                // 备用方案：逐行解析
                 const lines = response.split('\n').filter(l => l.trim());
                 const timeline = [];
                 const steps = [];
                 let currentTitle = '';
+                let currentText = [];
+                
                 for (const line of lines) {
-                    const titleMatch = line.match(/^\d+\.\s*(.+?)(?::|$)/);
+                    const trimmed = line.trim();
+                    
+                    // 匹配阶段标题
+                    const titleMatch = trimmed.match(/^(Stage|阶段)\s*\d+[\.:]\s*(.+)/i);
                     if (titleMatch) {
-                        currentTitle = titleMatch[1].trim();
-                    } else if (currentTitle && line.trim().length > 20) {
-                        timeline.push({ title: currentTitle, text: line.trim() });
-                        currentTitle = '';
-                    } else if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-                        steps.push(line.replace(/^[-*]\s*/, '').trim());
+                        if (currentTitle && currentText.length > 0) {
+                            timeline.push({ title: currentTitle, text: currentText.join(' ').trim() });
+                            currentText = [];
+                        }
+                        currentTitle = titleMatch[2].trim();
+                        continue;
+                    }
+                    
+                    // 匹配带冒号的标题
+                    const colonMatch = trimmed.match(/^(.+?)[:：]\s*(.+)/);
+                    if (colonMatch && colonMatch[1].length < 30) {
+                        if (currentTitle && currentText.length > 0) {
+                            timeline.push({ title: currentTitle, text: currentText.join(' ').trim() });
+                            currentText = [];
+                        }
+                        currentTitle = colonMatch[1].trim();
+                        currentText.push(colonMatch[2].trim());
+                        continue;
+                    }
+                    
+                    // 匹配步骤
+                    if (trimmed.match(/^[-*]\s*(.+)/)) {
+                        const step = trimmed.replace(/^[-*]\s*/, '').trim();
+                        if (step.length > 5) steps.push(step);
+                        continue;
+                    }
+                    
+                    if (trimmed.match(/^\d+\.\s*(.+)/)) {
+                        const step = trimmed.replace(/^\d+\.\s*/, '').trim();
+                        if (step.length > 5) steps.push(step);
+                        continue;
+                    }
+                    
+                    // 普通文本 - 添加到当前阶段
+                    if (currentTitle && trimmed.length > 5) {
+                        currentText.push(trimmed);
                     }
                 }
+                
+                // 保存最后一个阶段
+                if (currentTitle && currentText.length > 0) {
+                    timeline.push({ title: currentTitle, text: currentText.join(' ').trim() });
+                }
+                
                 if (timeline.length > 0) {
+                    console.log(`✅ 备用解析成功: ${timeline.length} 个阶段`);
                     return { timeline, steps };
                 }
+                
+                return null;
             }
-            return null;
         
         case '/api/generate_questions':
-            // ✅ Better parsing for AI-generated questions
             const lines = response.split('\n');
             const questions = [];
             
             for (const line of lines) {
-                // Match numbered questions (1., 2., etc.) or bullet points (-, *)
                 const match = line.match(/^(\d+\.|\d+\)|\-|\*)\s*(.+)/);
                 if (match) {
                     const question = match[2].trim();
@@ -3498,7 +3496,6 @@ function parseAIResponse(endpoint, response) {
                         questions.push(question);
                     }
                 } else if (line.trim().length > 0 && !line.match(/^(Here|These|Generate|Interview)/i)) {
-                    // If no number, but it's a valid sentence, add it
                     const trimmed = line.trim();
                     if (trimmed.length > 10 && trimmed.endsWith('?')) {
                         questions.push(trimmed);
@@ -3506,13 +3503,11 @@ function parseAIResponse(endpoint, response) {
                 }
             }
             
-            // ✅ If we got questions, return them
             if (questions.length > 0) {
                 console.log(`📝 Parsed ${questions.length} questions from AI response`);
                 return { questions: questions };
             }
             
-            // Fallback: split by question marks
             const qs = response.split('?')
                 .filter(q => q.trim().length > 10)
                 .map(q => q.trim() + '?');
@@ -3528,70 +3523,6 @@ function parseAIResponse(endpoint, response) {
     }
 }
 
-/* ──────────────────────────────────────────
-   UPDATED AI-POWERED FUNCTIONS
-────────────────────────────────────────── */
-
-// ✅ 修复：使用不同的函数名，避免覆盖冲突
-async function generateEnhancedPS() {
-    const story = document.getElementById('psStory').value.trim();
-    const unique = document.getElementById('psUnique').value.trim();
-    const subjectWhy = document.getElementById('psSubjectWhy').value.trim();
-    const academic = document.getElementById('psAcademic').value.trim();
-    const shortGoal = document.getElementById('psShortGoal').value.trim();
-    const longGoal = document.getElementById('psLongGoal').value.trim();
-    const whyUni = document.getElementById('psWhyUni').value.trim();
-    const whyUniDesc = document.getElementById('psWhyUniDesc').value.trim();
-    const target = document.getElementById('psTarget').value;
-    const wordLimit = parseInt(document.getElementById('psWordLimit').value) || 650;
-
-    const psOutput = document.getElementById('psOutput');
-    psOutput.innerHTML = '<div class="ai-loader">🧠 AI is crafting your personal statement...</div>';
-
-    try {
-        const result = await callAI('/api/generate_ps', {
-            name: state.profile?.name || 'Student',
-            major: state.profile?.major || '',
-            university: whyUni || 'your target university',
-            target: target,
-            story: story,
-            unique: unique,
-            subjectWhy: subjectWhy,
-            academic: academic,
-            shortGoal: shortGoal,
-            longGoal: longGoal,
-            whyUni: whyUni,
-            whyUniDesc: whyUniDesc,
-            wordLimit: wordLimit,
-        });
-
-        if (result && result.personal_statement) {
-            const ps = result.personal_statement;
-            state.ps.generated = ps;
-            Storage.save('pathspire_ps', ps);
-            
-            const words = ps.split(/\s+/).filter(Boolean).length;
-            psOutput.innerHTML = `<div style="white-space:pre-wrap;line-height:1.9">${ps}</div>`;
-            document.getElementById('psWordCount').textContent = `${words} / ${wordLimit} words`;
-            
-            const suggestions = await generateAISuggestions(ps);
-            const sugEl = document.getElementById('aiPSSuggestions');
-            document.getElementById('psSuggestionList').innerHTML = suggestions.map(s => 
-                `<div class="ai-tip" style="margin-bottom:8px">${s}</div>`
-            ).join('');
-            sugEl.style.display = 'block';
-            
-            updateProgressChecklist();
-            toast('Personal statement generated with AI!', 'success');
-            return;
-        }
-    } catch (error) {
-        console.error('AI generation failed:', error);
-    }
-    
-    // Fallback: 使用原有函数
-    generatePS();
-}
 
 // ✅ 修复：使用不同的函数名
 async function generateEnhancedInterviewQuestions() {
@@ -3645,7 +3576,7 @@ async function generateAIFeedback(sessionData) {
     );
 }
 
-async function enhancedSchoolMatch() {
+function enhancedSchoolMatch() {
     const region = document.getElementById('filterRegion').value;
     const matchFilter = document.getElementById('filterMatch').value;
     const majorFilter = document.getElementById('filterMajor').value;
@@ -3666,42 +3597,6 @@ async function enhancedSchoolMatch() {
     })).filter(s => matchFilter === 'all' || s.level === matchFilter)
       .sort((a,b) => b.score - a.score);
 
-    // Try AI enhancements, but always fall back to local scoring
-    try {
-        const result = await callAI('/api/match_schools', {
-            profile: {
-                name: state.profile?.name || '',
-                curriculum: state.profile?.curriculum || 'DSE',
-                major: state.profile?.major || '',
-                regions: state.profile?.regions || [],
-                grades: state.grades[state.profile?.curriculum || 'DSE'] || {},
-                activities: state.activities || [],
-            },
-            schools: filteredSchools,
-        });
-
-        if (result && result.matches) {
-            // Use AI scores only if they exist, otherwise keep local scores
-            scoredSchools = filteredSchools.map(s => {
-                const aiMatch = result.matches.find(m => m.id === s.id);
-                return {
-                    ...s,
-                    score: aiMatch ? aiMatch.score : computeMatchScore(s),
-                    level: aiMatch ? (aiMatch.level || getMatchLevelForTopSchools(s, aiMatch.score)) : getMatchLevelForTopSchools(s, computeMatchScore(s)),
-                    aiReason: aiMatch ? aiMatch.reason : null,
-                };
-            }).filter(s => matchFilter === 'all' || s.level === matchFilter)
-              .sort((a,b) => b.score - a.score);
-
-            state.schools = scoredSchools;
-            renderSchools(state.schools);
-            toast('AI-powered matching complete!', 'success');
-            return;
-        }
-    } catch (error) {
-        console.error('AI school matching failed, using local scoring:', error);
-    }
-    
     state.schools = scoredSchools;
     renderSchools(state.schools);
     toast(t('runMatch'), 'success');
@@ -3840,8 +3735,8 @@ window.startInterviewSession = async function() {
     }
 };
 
-window.runAIMatch = async function() {
-    await enhancedSchoolMatch();
+window.runAIMatch = function() {
+    enhancedSchoolMatch();
 };
 
 function addAIActivityAnalysis() {
@@ -3885,7 +3780,7 @@ async function checkAIConnection() {
 
 // ✅ 页面加载完成后添加 AI 分析按钮
 document.addEventListener('DOMContentLoaded', function() {
-    addAIActivityAnalysis();
+    // addAIActivityAnalysis();
     setTimeout(checkAIConnection, 3000);
 });
 

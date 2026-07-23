@@ -1208,6 +1208,31 @@ textarea { resize: vertical; }
 .spotlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
 .spotlight-card p { color: var(--text2); font-size: 0.9rem; line-height: 1.6; }
 
+/* ===== GENERATING INDICATOR ===== */
+.btn-generating {
+  position: relative;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  opacity: 0.7;
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+}
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .nav-links { display: none; }
