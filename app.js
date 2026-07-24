@@ -3702,8 +3702,8 @@ const originalStartInterview = startInterviewSession;
 const originalRunMatch = runAIMatch;
 
 // ✅ 重新定义函数
-window.generatePS = async function() {
-    await generateEnhancedPS();
+window.generatePS = function() {
+    originalGeneratePS();
 };
 
 window.startInterviewSession = async function() {
