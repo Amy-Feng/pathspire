@@ -1227,37 +1227,12 @@ function buildPersonalStatement({ story, unique, subjectWhy, academic, shortGoal
   const name = state.profile?.name || 'I';
   const subject = state.profile?.major || 'my chosen field';
   const uni = whyUni || 'this university';
-
-  const intro = story
-    ? `${story.charAt(0).toUpperCase() + story.slice(1).trim()}. This experience fundamentally shaped my understanding of ${subject} and ignited a passion I have pursued ever since.`
-    : `From an early age, I have been captivated by the challenges and possibilities that ${subject} presents. It is a discipline that demands both rigorous analytical thinking and creative problem-solving—qualities I have spent years developing.`;
-
   const uniquePara = unique
-    ? `What sets me apart is ${unique.charAt(0).toLowerCase() + unique.slice(1)}. I believe this perspective allows me to approach problems in ${subject} with a distinct lens, bridging theory and practice in ways that have consistently yielded meaningful results.`
+    ? 'This is a very solid start! You have a clear structure, a genuine tone, and you have already named your target university (UIUC)—which is excellent. However, your current draft is still generic. It tells the reader that youre passionate, but it doesnt show them. Phrases like "endless possibilities," "real-world problems," and "spending hours learning new languages" appear in thousands of applications. To stand out for a top-tier program like UIUC Grainger College of Engineering, you need specificity, concrete achievements, and a clear connection to UIUC.'
     : '';
 
-  const motivationPara = subjectWhy
-    ? `My fascination with ${subject} deepened when ${subjectWhy.charAt(0).toLowerCase() + subjectWhy.slice(1)}. ${academic ? `Academically, I have pursued this curiosity through ${academic.charAt(0).toLowerCase() + academic.slice(1)}, each experience reinforcing my commitment to this field.` : ''}`
-    : '';
 
-  const goalPara = (shortGoal || longGoal)
-    ? `At ${uni}, I aim to ${shortGoal ? shortGoal.charAt(0).toLowerCase() + shortGoal.slice(1) : 'deepen my expertise'}. ${longGoal ? `In the long term, I aspire to ${longGoal.charAt(0).toLowerCase() + longGoal.slice(1)}, using my education as a foundation for meaningful contribution.` : ''}`
-    : '';
-
-  const whyUniPara = whyUniDesc
-    ? `${uni} represents the ideal environment for this ambition. ${whyUniDesc.charAt(0).toUpperCase() + whyUniDesc.slice(1)}.`
-    : `I am drawn to ${uni} for its world-class faculty, vibrant intellectual community, and commitment to preparing graduates who make a genuine difference.`;
-
-  const activities = state.activities.slice(0, 3);
-  const actPara = activities.length > 0
-    ? `Beyond academics, ${activities.map(a => `my role as ${a.role || 'a participant'} in ${a.name}`).join(', ')} has developed my leadership, teamwork, and resilience.`
-    : '';
-
-  const closing = target === 'UCAS'
-    ? `I am eager to contribute to ${uni}'s academic community and to grow into a professional who bridges knowledge with impact. I look forward to the opportunity to do so.`
-    : `I am confident that ${uni}'s programme aligns perfectly with my goals, and I am excited by the prospect of contributing to its community while pursuing excellence in ${subject}.`;
-
-  const paragraphs = [intro, uniquePara, motivationPara, actPara, goalPara, whyUniPara, closing]
+  const paragraphs = [uniquePara]
     .filter(Boolean)
     .map(p => p.trim());
 
