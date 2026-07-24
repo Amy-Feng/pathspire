@@ -3652,6 +3652,44 @@ async function generateAISuggestions(ps) {
    OVERRIDE INTERFACE FUNCTIONS (修复版)
 ────────────────────────────────────────── */
 
+// ✅ 本地生成个人陈述（含生成指示器）
+function generateEnhancedPS() {
+  const story = document.getElementById('psStory').value.trim();
+  const unique = document.getElementById('psUnique').value.trim();
+  const subjectWhy = document.getElementById('psSubjectWhy').value.trim();
+  const academic = document.getElementById('psAcademic').value.trim();
+  const shortGoal = document.getElementById('psShortGoal').value.trim();
+  const longGoal = document.getElementById('psLongGoal').value.trim();
+  const whyUni = document.getElementById('psWhyUni').value.trim();
+  const whyUniDesc = document.getElementById('psWhyUniDesc').value.trim();
+  const target = document.getElementById('psTarget').value;
+  const wordLimit = parseInt(document.getElementById('psWordLimit').value) || 650;
+
+  const psOutput = document.getElementById('psOutput');
+  psOutput.innerHTML = '<div class="ai-loader">Generating your personal statement…</div>';
+
+  // 暂停片刻让加载动画出现，然后使用本地模板
+  setTimeout(() => {
+    const ps = buildPersonalStatement({ story, unique, subjectWhy, academic, shortGoal, longGoal, whyUni, whyUniDesc, target, wordLimit });
+
+    state.ps.generated = ps;
+    Storage.save('pathspire_ps', ps);
+    Storage.saveAllState();
+
+    const words = ps.split(/\s+/).filter(Boolean).length;
+    psOutput.innerHTML = `<div style="white-space:pre-wrap;line-height:1.9">${ps}</div>`;
+    document.getElementById('psWordCount').textContent = `${words} / ${wordLimit} words`;
+
+    const suggestions = generatePSSuggestions(ps, target, wordLimit);
+    const sugEl = document.getElementById('aiPSSuggestions');
+    document.getElementById('psSuggestionList').innerHTML = suggestions.map(s => `<div class="ai-tip" style="margin-bottom:8px">${s}</div>`).join('');
+    sugEl.style.display = 'block';
+
+    updateProgressChecklist();
+    toast(t('psGenerated'), 'success');
+  }, 300);
+}
+
 // ✅ 用新函数替换原有函数，而不是直接赋值
 function generatePSWithAI() {
     generateEnhancedPS();
@@ -3703,7 +3741,7 @@ const originalRunMatch = runAIMatch;
 
 // ✅ 重新定义函数
 window.generatePS = function() {
-    originalGeneratePS();
+    generateEnhancedPS();
 };
 
 window.startInterviewSession = async function() {
